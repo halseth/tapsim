@@ -1,7 +1,7 @@
 package script
 
 import (
-	"fmt"
+	"encoding/hex"
 	"strings"
 
 	"github.com/btcsuite/btcd/txscript"
@@ -12,12 +12,20 @@ func Parse(script string) ([]byte, error) {
 
 	builder := txscript.NewScriptBuilder()
 	for _, o := range c {
-		op, ok := txscript.OpcodeByName[o]
-		if !ok {
-			return nil, fmt.Errorf("invalid opcode: %s", o)
+
+		// If valid opcode, simply push it to the script.
+		if op, ok := txscript.OpcodeByName[o]; ok {
+			builder.AddOp(op)
+			continue
 		}
 
-		builder.AddOp(op)
+		// Otherwise, try to interpret it as data.
+		data, err := hex.DecodeString(o)
+		if err != nil {
+			return nil, err
+		}
+
+		builder.AddData(data)
 	}
 
 	return builder.Script()
