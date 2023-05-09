@@ -51,3 +51,86 @@ func WitnessToString(witness [][]byte) []string {
 
 	return str
 }
+
+const columnWidth = 40
+
+func ExecutionTable(pc int, script, stack, altStack, witness []string) string {
+	fullWidth := 4 * (columnWidth + 2)
+	s := strings.Repeat("-", fullWidth)
+	s += "\n"
+	s += fmt.Sprintf(" %s| %s| %s| %s\n",
+		FixedWidth(columnWidth, "script"),
+		FixedWidth(columnWidth, "stack"),
+		FixedWidth(columnWidth, "alt stack"),
+		FixedWidth(columnWidth, "witness"),
+	)
+	s += strings.Repeat("-", fullWidth)
+	s += "\n"
+
+	row := 0
+	for {
+		scr := ""
+		if row < len(script) {
+			scr = script[row]
+		}
+
+		stk := ""
+		if row < len(stack) {
+			stk = stack[row]
+		}
+
+		alt := ""
+		if row < len(altStack) {
+			alt = altStack[row]
+		}
+
+		wit := ""
+		if row < len(witness) {
+			wit = witness[row]
+		}
+
+		pcC := " "
+		if pc == row {
+			pcC = ">"
+
+		}
+
+		s += fmt.Sprintf("%s%s| %s| %s| %s\n",
+			pcC,
+			FixedWidth(columnWidth, scr),
+			FixedWidth(columnWidth, stk),
+			FixedWidth(columnWidth, alt),
+			FixedWidth(columnWidth, wit),
+		)
+
+		if scr == "" && stk == "" && alt == "" && wit == "" {
+			break
+		}
+
+		row++
+	}
+
+	s += strings.Repeat("-", 4*(columnWidth+2))
+	s += "\n"
+
+	return s
+}
+
+func FixedWidth(w int, s string) string {
+	fw := ""
+	for i := 0; i < w; i++ {
+		if i < len(s) {
+			if i >= w-3 {
+				fw += "."
+				continue
+			}
+
+			fw += string(s[i])
+			continue
+		}
+
+		fw += " "
+	}
+
+	return fw
+}
