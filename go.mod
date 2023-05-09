@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/btcsuite/btcd v0.23.4
 	github.com/btcsuite/btcd/btcec/v2 v2.1.3
+	github.com/pkg/term v1.1.0
 	github.com/urfave/cli/v2 v2.23.7
 )
 
@@ -18,7 +19,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 // indirect
-	golang.org/x/sys v0.0.0-20200814200057-3d37ad5750ed // indirect
+	golang.org/x/sys v0.0.0-20200909081042-eff7692f9009 // indirect
 )
 
 replace github.com/btcsuite/btcd => github.com/halseth/btcd v0.0.0-20230509090317-4c4732b4c40f

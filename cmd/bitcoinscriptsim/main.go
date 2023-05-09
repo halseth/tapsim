@@ -87,8 +87,8 @@ func execute(cCtx *cli.Context) error {
 		witnessStr = cCtx.String("witness")
 	}
 
-	fmt.Printf("Script: %s\n", scriptStr)
-	fmt.Printf("Witness: %s\n", witnessStr)
+	fmt.Printf("Script: %s\r\n", scriptStr)
+	fmt.Printf("Witness: %s\r\n", witnessStr)
 
 	parsedScript, err := script.Parse(scriptStr)
 	if err != nil {
@@ -106,6 +106,6 @@ func execute(cCtx *cli.Context) error {
 		return nil
 	}
 
-	fmt.Println("script verified")
+	fmt.Printf("script verified\r\n")
 	return nil
 }
