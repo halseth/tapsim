@@ -12,7 +12,7 @@ import (
 func main() {
 	app := &cli.App{
 		Name:  "bitcoinscriptsim",
-		Usage: "parse bitcoin script",
+		Usage: "parse and debug bitcoin scripts",
 	}
 
 	app.Commands = []*cli.Command{
@@ -27,6 +27,24 @@ func main() {
 				&cli.StringFlag{
 					Name:  "script",
 					Usage: "script to parse",
+				},
+			},
+		},
+		{
+			Name:        "execute",
+			Usage:       "",
+			UsageText:   "",
+			Description: "",
+			ArgsUsage:   "",
+			Action:      execute,
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:  "script",
+					Usage: "output script",
+				},
+				&cli.StringFlag{
+					Name:  "witness",
+					Usage: "witness stack",
 				},
 			},
 		},
@@ -52,5 +70,42 @@ func parse(cCtx *cli.Context) error {
 	}
 
 	fmt.Printf("Parsed: %x\n", parsed)
+	return nil
+}
+
+func execute(cCtx *cli.Context) error {
+	var scriptStr, witnessStr string
+	if cCtx.NArg() > 0 {
+		scriptStr = cCtx.Args().Get(0)
+	} else if cCtx.String("script") != "" {
+		scriptStr = cCtx.String("script")
+	}
+
+	if cCtx.NArg() > 1 {
+		witnessStr = cCtx.Args().Get(1)
+	} else if cCtx.String("witness") != "" {
+		witnessStr = cCtx.String("witness")
+	}
+
+	fmt.Printf("Script: %s\n", scriptStr)
+	fmt.Printf("Witness: %s\n", witnessStr)
+
+	parsedScript, err := script.Parse(scriptStr)
+	if err != nil {
+		return err
+	}
+
+	parsedWitness, err := script.Parse(witnessStr)
+	if err != nil {
+		return err
+	}
+
+	executeErr := script.Execute(parsedScript, parsedWitness)
+	if executeErr != nil {
+		fmt.Printf("script exection failed: %s\n", executeErr)
+		return nil
+	}
+
+	fmt.Println("script verified")
 	return nil
 }
