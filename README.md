@@ -48,7 +48,7 @@ GLOBAL OPTIONS:
 
 ## Examples
 ```bash
-./tapsim execute --script "OP_DUP OP_HASH160 79510b993bd0c642db233e2c9f3d9ef0d653f229 OP_EQUALVERIFY" --witness "OP_4"
+$ ./tapsim execute --script "OP_DUP OP_HASH160 79510b993bd0c642db233e2c9f3d9ef0d653f229 OP_EQUALVERIFY" --witness "OP_4"
 Script: OP_DUP OP_HASH160 79510b993bd0c642db233e2c9f3d9ef0d653f229 OP_EQUALVERIFY
 Witness: OP_4
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
