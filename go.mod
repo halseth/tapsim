@@ -1,4 +1,4 @@
-module github.com/halseth/bitcoinscriptsim
+module github.com/halseth/tapsim
 
 go 1.19
 

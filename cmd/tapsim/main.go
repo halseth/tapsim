@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/halseth/bitcoinscriptsim/script"
+	"github.com/halseth/tapsim/script"
 	"github.com/urfave/cli/v2"
 )
 

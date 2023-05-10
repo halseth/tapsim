@@ -1,3 +1,5 @@
 /.idea
-/cmd/bitcoinscriptsim/bitcoinscriptsim
-/bitcoinscriptsim
+
+# Binaries
+/cmd/tapsim/tapsimsim
+/tapsim

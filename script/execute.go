@@ -7,7 +7,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/halseth/bitcoinscriptsim/output"
+	"github.com/halseth/tapsim/output"
 	"github.com/pkg/term"
 )
 
