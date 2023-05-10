@@ -68,5 +68,8 @@ script verified
 ## Contributing
 Contributions to Tapsim are welcomed. Please open a pull request or issue.
 
+## Acknowledgements
+This project is heavily inspired by the excellent [btcdeb](https://github.com/bitcoin-core/btcdeb).
+
 ## License
 Tapsim is licensed under the MIT License - see the LICENSE.md file for details.
