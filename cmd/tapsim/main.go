@@ -11,7 +11,7 @@ import (
 
 func main() {
 	app := &cli.App{
-		Name:  "bitcoinscriptsim",
+		Name:  "tapsim",
 		Usage: "parse and debug bitcoin scripts",
 	}
 
