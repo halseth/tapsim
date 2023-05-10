@@ -1,5 +1,5 @@
 /.idea
 
 # Binaries
-/cmd/tapsim/tapsimsim
+/cmd/tapsim/tapsim
 /tapsim
