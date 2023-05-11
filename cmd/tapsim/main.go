@@ -46,6 +46,11 @@ func main() {
 					Name:  "witness",
 					Usage: "witness stack",
 				},
+				&cli.BoolFlag{
+					Name:    "non-interactive",
+					Aliases: []string{"ni"},
+					Usage:   "disable interactive mode",
+				},
 			},
 		},
 	}
@@ -87,6 +92,8 @@ func execute(cCtx *cli.Context) error {
 		witnessStr = cCtx.String("witness")
 	}
 
+	nonInteractive := cCtx.Bool("non-interactive")
+
 	fmt.Printf("Script: %s\r\n", scriptStr)
 	fmt.Printf("Witness: %s\r\n", witnessStr)
 
@@ -100,9 +107,9 @@ func execute(cCtx *cli.Context) error {
 		return err
 	}
 
-	executeErr := script.Execute(parsedScript, parsedWitness)
+	executeErr := script.Execute(parsedScript, parsedWitness, !nonInteractive)
 	if executeErr != nil {
-		fmt.Printf("script exection failed: %s\n", executeErr)
+		fmt.Printf("script exection failed: %s\r\n", executeErr)
 		return nil
 	}
 

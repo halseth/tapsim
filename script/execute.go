@@ -15,7 +15,7 @@ const scriptFlags = txscript.StandardVerifyFlags
 
 // Execute builds a tap leaf using the passed pkScript and executes it step by
 // step with the provided witness.
-func Execute(pkScript, witness []byte) error {
+func Execute(pkScript, witness []byte, interactive bool) error {
 	// Get random key as we will use for the taproot internal key.
 	privKey, err := btcec.NewPrivateKey()
 	if err != nil {
@@ -72,42 +72,49 @@ func Execute(pkScript, witness []byte) error {
 		)
 	}
 
-	// Set the terminal in raw mode, such that we can capture arrow
-	// presses.
-	t, err := term.Open("/dev/tty")
-	if err != nil {
-		return err
-	}
-	defer t.Close()
+	var t *term.Term
+	if interactive {
+		// Set the terminal in raw mode, such that we can capture arrow
+		// presses.
+		t, err = term.Open("/dev/tty")
+		if err != nil {
+			return err
+		}
+		defer t.Close()
 
-	term.RawMode(t)
+		term.RawMode(t)
+	}
 
 	currentStep := 0
 	prevLines := 0
 	bytes := make([]byte, 3)
 	for {
-		numRead, err := t.Read(bytes)
-		if err != nil {
-			return err
-		}
-
-		if numRead == 3 && bytes[0] == 27 && bytes[1] == 91 {
-			switch bytes[2] {
-			case 65:
-				//fmt.Print("Up arrow key pressed\r\n")
-			case 66:
-				//fmt.Print("Down arrow key pressed\r\n")
-			case 67:
-				//fmt.Print("Right arrow key pressed\r\n")
-				currentStep++
-			case 68:
-				//fmt.Print("Left arrow key pressed\r\n")
-				currentStep--
+		if interactive {
+			numRead, err := t.Read(bytes)
+			if err != nil {
+				return err
 			}
 
-		} else if numRead == 1 && bytes[0] == 3 {
-			// Ctrl+C pressed, quit the program
-			return nil
+			if numRead == 3 && bytes[0] == 27 && bytes[1] == 91 {
+				switch bytes[2] {
+				case 65:
+					//fmt.Print("Up arrow key pressed\r\n")
+				case 66:
+					//fmt.Print("Down arrow key pressed\r\n")
+				case 67:
+					//fmt.Print("Right arrow key pressed\r\n")
+					currentStep++
+				case 68:
+					//fmt.Print("Left arrow key pressed\r\n")
+					currentStep--
+				}
+
+			} else if numRead == 1 && bytes[0] == 3 {
+				// Ctrl+C pressed, quit the program
+				return nil
+			}
+		} else {
+			currentStep++
 		}
 
 		// Based on the current step counter, we execute up until that
@@ -116,7 +123,11 @@ func Execute(pkScript, witness []byte) error {
 
 		// Before handling any error, we draw the state table for the
 		// step.
-		clearLines := prevLines
+		clearLines := 0
+		if interactive {
+			clearLines = prevLines
+		}
+
 		output.DrawTable(table, clearLines)
 
 		// Take note of the number of lines just printed, such that we
