@@ -112,31 +112,42 @@ func Execute(pkScript, witness []byte) error {
 
 		// Based on the current step counter, we execute up until that
 		// step, then print the state table.
-		table, done, err := StepScript(setupFunc, currentStep)
-		if err != nil {
-			return err
-		}
+		table, vmErr := StepScript(setupFunc, currentStep)
 
-		output.DrawTable(table, prevLines)
-		if done {
-			break
-		}
+		// Before handling any error, we draw the state table for the
+		// step.
+		clearLines := prevLines
+		output.DrawTable(table, clearLines)
 
 		// Take note of the number of lines just printed, such that we
-		// can clear them on next iteration.
+		// can clear them on next iteration in case we are using
+		// interactive mode.
 		prevLines = strings.Count(table, "\n") + 1
-	}
 
-	return nil
+		// If the VM encountered no error, it means the script
+		// successfully executed to completion.
+		if vmErr == nil {
+			return nil
+		}
+
+		// If we encountered an error other than errAbortVM,
+		// the script actually failed.
+		if vmErr != errAbortVM {
+			return vmErr
+		}
+
+		// Otherwise script execution was aborted before it completed,
+		// so we continue with the next step of the execution.
+	}
 }
 
 var errAbortVM = fmt.Errorf("aborting vm execution")
 
-func StepScript(setupFunc func() (*txscript.Engine, error), numSteps int) (string, bool, error) {
+func StepScript(setupFunc func() (*txscript.Engine, error), numSteps int) (string, error) {
 
 	vm, err := setupFunc()
 	if err != nil {
-		return "", false, err
+		return "", err
 	}
 
 	const (
@@ -145,13 +156,16 @@ func StepScript(setupFunc func() (*txscript.Engine, error), numSteps int) (strin
 		SCRIPT_WITNESS_SCRIPT = 2
 	)
 
-	var finalState string
-
 	// Set up a callback that we will use to inspect the engine state at
 	// every execution step.
-	currentScript := -1
-	stepCounter := 0
+	var (
+		currentScript = -1
+		stepCounter   = 0
+		finalState    string
+	)
 	vm.StepCallback = func(step *txscript.StepInfo) error {
+		finalState = ""
+
 		switch step.ScriptIndex {
 		// Script sig is empty and uninteresting under segwit, so we
 		// just ignore it.
@@ -182,35 +196,27 @@ func StepScript(setupFunc func() (*txscript.Engine, error), numSteps int) (strin
 		currentScript = step.ScriptIndex
 
 		// Parse the current script for output.
-		if stepCounter == numSteps {
-			scriptStr := output.VmScriptToString(vm, step.ScriptIndex)
-			table := output.ExecutionTable(
-				step.OpcodeIndex,
-				scriptStr,
-				output.StackToString(step.Stack),
-				output.StackToString(step.AltStack),
-				output.StackToString(step.Witness),
-			)
+		scriptStr := output.VmScriptToString(vm, step.ScriptIndex)
+		table := output.ExecutionTable(
+			step.OpcodeIndex,
+			scriptStr,
+			output.StackToString(step.Stack),
+			output.StackToString(step.AltStack),
+			output.StackToString(step.Witness),
+		)
 
-			finalState += table
-			finalState += "\n"
-		}
+		finalState += table
+		finalState += "\n"
 
-		// If we have executed enough steps, signal to abort using our
-		// custom error.
-		if stepCounter > numSteps {
+		// If we have executed enough steps, signal the VM to abort
+		// using our custom error.
+		if stepCounter >= numSteps {
 			return errAbortVM
 		}
+
 		return nil
 	}
 
 	vmErr := vm.Execute()
-
-	// An unexpected error was encountered.
-	if vmErr != nil && vmErr != errAbortVM {
-		return "", false, vmErr
-	}
-
-	done := vmErr == nil
-	return finalState, done, nil
+	return finalState, vmErr
 }
