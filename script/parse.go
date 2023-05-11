@@ -30,3 +30,19 @@ func Parse(script string) ([]byte, error) {
 
 	return builder.Script()
 }
+
+func ParseWitness(witness string) ([][]byte, error) {
+	c := strings.Split(witness, " ")
+
+	var witnessStack [][]byte
+	for _, o := range c {
+		data, err := hex.DecodeString(o)
+		if err != nil {
+			return nil, err
+		}
+
+		witnessStack = append(witnessStack, data)
+	}
+
+	return witnessStack, nil
+}

@@ -15,7 +15,7 @@ const scriptFlags = txscript.StandardVerifyFlags
 
 // Execute builds a tap leaf using the passed pkScript and executes it step by
 // step with the provided witness.
-func Execute(pkScript, witness []byte, interactive bool) error {
+func Execute(pkScript []byte, witness [][]byte, interactive bool) error {
 	// Get random key as we will use for the taproot internal key.
 	privKey, err := btcec.NewPrivateKey()
 	if err != nil {
@@ -59,10 +59,13 @@ func Execute(pkScript, witness []byte, interactive bool) error {
 		return err
 	}
 
+	var combinedWitness wire.TxWitness
+	combinedWitness = append(combinedWitness, witness...)
+	combinedWitness = append(combinedWitness, pkScript, ctrlBlockBytes)
+
 	txCopy := tx.Copy()
-	txCopy.TxIn[0].Witness = wire.TxWitness{
-		witness, pkScript, ctrlBlockBytes,
-	}
+	txCopy.TxIn[0].Witness = wire.TxWitness{}
+	txCopy.TxIn[0].Witness = combinedWitness
 
 	setupFunc := func() (*txscript.Engine, error) {
 		sigHashes := txscript.NewTxSigHashes(tx, prevOutFetcher)

@@ -102,7 +102,7 @@ func execute(cCtx *cli.Context) error {
 		return err
 	}
 
-	parsedWitness, err := script.Parse(witnessStr)
+	parsedWitness, err := script.ParseWitness(witnessStr)
 	if err != nil {
 		return err
 	}
