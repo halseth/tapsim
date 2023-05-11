@@ -119,7 +119,9 @@ func Execute(pkScript, witness []byte, interactive bool) error {
 
 		// Based on the current step counter, we execute up until that
 		// step, then print the state table.
-		table, vmErr := StepScript(setupFunc, currentStep)
+		table, vmErr := StepScript(
+			setupFunc, txCopy.TxIn[0].Witness, currentStep,
+		)
 
 		// Before handling any error, we draw the state table for the
 		// step.
@@ -154,7 +156,8 @@ func Execute(pkScript, witness []byte, interactive bool) error {
 
 var errAbortVM = fmt.Errorf("aborting vm execution")
 
-func StepScript(setupFunc func() (*txscript.Engine, error), numSteps int) (string, error) {
+func StepScript(setupFunc func() (*txscript.Engine, error), witness [][]byte,
+	numSteps int) (string, error) {
 
 	vm, err := setupFunc()
 	if err != nil {
@@ -176,6 +179,7 @@ func StepScript(setupFunc func() (*txscript.Engine, error), numSteps int) (strin
 	)
 	vm.StepCallback = func(step *txscript.StepInfo) error {
 		finalState = ""
+		var showWitness [][]byte
 
 		switch step.ScriptIndex {
 		// Script sig is empty and uninteresting under segwit, so we
@@ -195,6 +199,8 @@ func StepScript(setupFunc func() (*txscript.Engine, error), numSteps int) (strin
 				return nil
 			}
 
+			showWitness = witness
+
 		// Execution of the witness script is the interesting part.
 		case SCRIPT_WITNESS_SCRIPT:
 			if currentScript != step.ScriptIndex &&
@@ -213,7 +219,7 @@ func StepScript(setupFunc func() (*txscript.Engine, error), numSteps int) (strin
 			scriptStr,
 			output.StackToString(step.Stack),
 			output.StackToString(step.AltStack),
-			output.StackToString(step.Witness),
+			output.StackToString(showWitness),
 		)
 
 		finalState += table
