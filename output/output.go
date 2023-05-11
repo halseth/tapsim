@@ -125,7 +125,15 @@ func FixedWidth(w int, s string) string {
 	fw := ""
 	for i := 0; i < w; i++ {
 		if i < len(s) {
-			if i >= w-3 {
+			// For long elements, we want to print the last few
+			// characters for visibility.
+			if i >= w-4 {
+				fw += string(s[len(s)-(w-i)])
+				continue
+			}
+
+			if i >= w-7 {
+				//if i >= w-3 {
 				fw += "."
 				continue
 			}
