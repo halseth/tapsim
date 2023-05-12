@@ -86,6 +86,7 @@ func Execute(pkScript []byte, witness [][]byte, interactive bool) error {
 		defer t.Close()
 
 		term.RawMode(t)
+		defer t.Restore()
 	}
 
 	currentStep := 0
