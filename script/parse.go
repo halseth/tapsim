@@ -36,9 +36,20 @@ func ParseWitness(witness string) ([][]byte, error) {
 
 	var witnessStack [][]byte
 	for _, o := range c {
-		data, err := hex.DecodeString(o)
-		if err != nil {
-			return nil, err
+		var (
+			data []byte
+			err  error
+		)
+		switch o {
+		// Empty element.
+		case "<>":
+			data = []byte{}
+
+		default:
+			data, err = hex.DecodeString(o)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		witnessStack = append(witnessStack, data)
