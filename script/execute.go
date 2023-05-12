@@ -114,7 +114,7 @@ func Execute(pkScript []byte, witness [][]byte, interactive bool) error {
 
 			} else if numRead == 1 && bytes[0] == 3 {
 				// Ctrl+C pressed, quit the program
-				return nil
+				return fmt.Errorf("execution aborted")
 			}
 		} else {
 			currentStep++
