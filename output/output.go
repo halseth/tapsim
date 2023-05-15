@@ -15,7 +15,8 @@ func StackToString(stack [][]byte) []string {
 
 		// The empty element is treated as 0.
 		if len(b) == 0 {
-			b = []byte{0}
+			str = append(str, "<>")
+			continue
 		}
 		s := hex.EncodeToString(b)
 		str = append(str, s)
