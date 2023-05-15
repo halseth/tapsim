@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/halseth/tapsim/file"
 	"github.com/halseth/tapsim/script"
 	"github.com/urfave/cli/v2"
 )
@@ -40,7 +41,7 @@ func main() {
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "script",
-					Usage: "output script",
+					Usage: "filename or output script as string",
 				},
 				&cli.StringFlag{
 					Name:  "witness",
@@ -79,11 +80,24 @@ func parse(cCtx *cli.Context) error {
 }
 
 func execute(cCtx *cli.Context) error {
-	var scriptStr, witnessStr string
+	var scriptFile, scriptStr, witnessStr string
 	if cCtx.NArg() > 0 {
-		scriptStr = cCtx.Args().Get(0)
+		scriptFile = cCtx.Args().Get(0)
 	} else if cCtx.String("script") != "" {
-		scriptStr = cCtx.String("script")
+		scriptFile = cCtx.String("script")
+	}
+
+	// Attempt to read the script from file.
+	scriptBytes, err := file.Read(scriptFile)
+	if err == nil {
+		scriptStr, err = file.Parse(scriptBytes)
+		if err != nil {
+			return err
+		}
+	} else {
+		// If we failed reading the file, assume it's the
+		// script directly.
+		scriptStr = scriptFile
 	}
 
 	if cCtx.NArg() > 1 {
