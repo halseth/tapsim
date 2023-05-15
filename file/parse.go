@@ -21,6 +21,7 @@ func Parse(data []byte) (string, error) {
 	fileScanner := bufio.NewScanner(buf)
 
 	var script string
+	var first bool
 	for fileScanner.Scan() {
 		line := fileScanner.Text()
 
@@ -34,10 +35,11 @@ func Parse(data []byte) (string, error) {
 		// Split on whitespace.
 		words := strings.Fields(line)
 		for i, w := range words {
-			script += w
-			if i < len(w)-1 {
+			if !first {
 				script += " "
+				first = false
 			}
+			script += w
 		}
 	}
 	return script, nil
