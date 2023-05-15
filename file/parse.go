@@ -34,7 +34,7 @@ func Parse(data []byte) (string, error) {
 
 		// Split on whitespace.
 		words := strings.Fields(line)
-		for i, w := range words {
+		for _, w := range words {
 			if !first {
 				script += " "
 				first = false
