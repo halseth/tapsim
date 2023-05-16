@@ -58,7 +58,7 @@ func WitnessToString(witness [][]byte) []string {
 	return str
 }
 
-const columnWidth = 40
+const columnWidth = 80
 
 func ExecutionTable(pc int, script, stack, altStack, witness []string) string {
 	fullWidth := 4 * (columnWidth + 2)

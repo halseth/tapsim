@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"log"
 	"os"
@@ -51,6 +52,14 @@ func main() {
 					Name:    "non-interactive",
 					Aliases: []string{"ni"},
 					Usage:   "disable interactive mode",
+				},
+				&cli.StringFlag{
+					Name:  "inputkey",
+					Usage: "use specified internal key for the input",
+				},
+				&cli.StringFlag{
+					Name:  "outputkey",
+					Usage: "use specified internal key for the output",
 				},
 			},
 		},
@@ -107,6 +116,16 @@ func execute(cCtx *cli.Context) error {
 	}
 
 	nonInteractive := cCtx.Bool("non-interactive")
+	inputKeyStr := cCtx.String("inputkey")
+	inputKeyBytes, err := hex.DecodeString(inputKeyStr)
+	if err != nil {
+		return err
+	}
+	outputKeyStr := cCtx.String("outputkey")
+	outputKeyBytes, err := hex.DecodeString(outputKeyStr)
+	if err != nil {
+		return err
+	}
 
 	fmt.Printf("Script: %s\r\n", scriptStr)
 	fmt.Printf("Witness: %s\r\n", witnessStr)
@@ -121,7 +140,9 @@ func execute(cCtx *cli.Context) error {
 		return err
 	}
 
-	executeErr := script.Execute(parsedScript, parsedWitness, !nonInteractive)
+	executeErr := script.Execute(
+		inputKeyBytes, outputKeyBytes, parsedScript, parsedWitness, !nonInteractive,
+	)
 	if executeErr != nil {
 		fmt.Printf("script exection failed: %s\r\n", executeErr)
 		return nil

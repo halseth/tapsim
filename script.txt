@@ -1,0 +1,54 @@
+# Get input commitment and push to alt stack.
+OP_TOALTSTACK
+
+# Claim [value, preimage]
+# Push the hash of the preimage to the alt stack. This will be the new merkle leaf.
+OP_DUP OP_SHA256 OP_TOALTSTACK 
+
+# Calculate hash of preimage:value
+OP_CAT OP_SHA256 
+
+# Use merkle sibling together with new leaf on alt stack to find new merkle node.
+OP_3DUP OP_DROP OP_FROMALTSTACK
+OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256 OP_TOALTSTACK
+
+# Do the same with the current merkle leaf.
+OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256
+
+# Same for next level in the tree.
+OP_3DUP OP_DROP OP_FROMALTSTACK 
+OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256 OP_TOALTSTACK 
+
+OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256 
+
+# Check merkle root against what we expect. 
+# Here we must fetch input commitment.
+# a05c758c030599f7e8a98b00b64e5bd5eb12445cdd1233662fc5b90ea85a768a 
+OP_FROMALTSTACK OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
+OP_EQUALVERIFY 
+
+# Claim next preimage
+OP_DUP OP_SHA256 OP_TOALTSTACK 
+# Calculate hash of preimage:value
+OP_CAT OP_SHA256 
+
+# Use merkle sibling together with new leaf on alt stack to find new merkle node.
+OP_3DUP OP_DROP OP_FROMALTSTACK
+OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256 OP_TOALTSTACK
+
+# Do the same with the current merkle leaf.
+OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256
+
+# Same for next level in the tree.
+OP_3DUP OP_DROP OP_FROMALTSTACK 
+OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256 OP_TOALTSTACK 
+
+OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256 
+
+# Check merkle root against what we expect. 
+# Here we must fetch input commitment.
+# a05c758c030599f7e8a98b00b64e5bd5eb12445cdd1233662fc5b90ea85a768a 
+OP_FROMALTSTACK OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
+OP_EQUALVERIFY 
+
+# New merkle root is now on alt stack
