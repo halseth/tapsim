@@ -20,8 +20,10 @@ func Parse(data []byte) (string, error) {
 	buf := bytes.NewBuffer(data)
 	fileScanner := bufio.NewScanner(buf)
 
-	var script string
-	var first bool
+	var (
+		script string
+		first  = true
+	)
 	for fileScanner.Scan() {
 		line := fileScanner.Text()
 
@@ -37,9 +39,10 @@ func Parse(data []byte) (string, error) {
 		for _, w := range words {
 			if !first {
 				script += " "
-				first = false
 			}
+
 			script += w
+			first = false
 		}
 	}
 	return script, nil
