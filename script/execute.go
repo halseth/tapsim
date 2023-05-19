@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/halseth/tapsim/output"
@@ -15,26 +16,68 @@ const scriptFlags = txscript.StandardVerifyFlags
 
 // Execute builds a tap leaf using the passed pkScript and executes it step by
 // step with the provided witness.
-func Execute(pkScript []byte, witness [][]byte, interactive bool) error {
-	// Get random key as we will use for the taproot internal key.
+//
+// If [input/output]KeyBytes is empty, a random key will be generated.
+func Execute(inputKeyBytes, outputKeyBytes []byte, pkScript []byte,
+	witness [][]byte, interactive bool) error {
+
+	// Get random key we will use for the taproot internal key if not
+	// already specified.
 	privKey, err := btcec.NewPrivateKey()
 	if err != nil {
 		return err
 	}
-	internalKey := privKey.PubKey()
+
+	var inputKey *btcec.PublicKey
+	if len(inputKeyBytes) == 0 {
+		inputKey = privKey.PubKey()
+	} else {
+		var err error
+		inputKey, err = schnorr.ParsePubKey(inputKeyBytes)
+		if err != nil {
+			return err
+		}
+	}
+
+	var outputKey *btcec.PublicKey
+	if len(outputKeyBytes) == 0 {
+		outputKey = privKey.PubKey()
+	} else {
+		var err error
+		outputKey, err = schnorr.ParsePubKey(outputKeyBytes)
+		if err != nil {
+			return err
+		}
+	}
 
 	tapLeaf := txscript.NewBaseTapLeaf(pkScript)
 	tapScriptTree := txscript.AssembleTaprootScriptTree(tapLeaf)
 
 	ctrlBlock := tapScriptTree.LeafMerkleProofs[0].ToControlBlock(
-		internalKey,
+		inputKey,
 	)
 
 	tapScriptRootHash := tapScriptTree.RootNode.TapHash()
-	outputKey := txscript.ComputeTaprootOutputKey(
-		internalKey, tapScriptRootHash[:],
+
+	inputTapKey := txscript.ComputeTaprootOutputKey(
+		inputKey, tapScriptRootHash[:],
 	)
-	p2trScript, err := txscript.PayToTaprootScript(outputKey)
+
+	inputScript, err := txscript.PayToTaprootScript(inputTapKey)
+	if err != nil {
+		return err
+	}
+
+	outputTapKey := txscript.ComputeTaprootOutputKey(
+		outputKey, tapScriptRootHash[:],
+	)
+
+	fmt.Printf("taptree: %x\n", tapScriptRootHash[:])
+	fmt.Printf("input internal key: %x\n", schnorr.SerializePubKey(inputKey))
+	fmt.Printf("input taproot key: %x\n", schnorr.SerializePubKey(inputTapKey))
+	fmt.Printf("output internal key: %x\n", schnorr.SerializePubKey(outputKey))
+	fmt.Printf("output taproot key: %x\n", schnorr.SerializePubKey(outputTapKey))
+	outputScript, err := txscript.PayToTaprootScript(outputTapKey)
 	if err != nil {
 		return err
 	}
@@ -45,11 +88,15 @@ func Execute(pkScript []byte, witness [][]byte, interactive bool) error {
 			Index: 0,
 		},
 	})
+	tx.AddTxOut(&wire.TxOut{
+		Value:    1e8,
+		PkScript: outputScript,
+	})
+
 	prevOut := &wire.TxOut{
 		Value:    1e8,
-		PkScript: p2trScript,
+		PkScript: inputScript,
 	}
-
 	prevOutFetcher := txscript.NewCannedPrevOutputFetcher(
 		prevOut.PkScript, prevOut.Value,
 	)
