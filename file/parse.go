@@ -16,7 +16,7 @@ func Read(filename string) ([]byte, error) {
 	return data, nil
 }
 
-func Parse(data []byte) (string, error) {
+func ParseScript(data []byte) (string, error) {
 	buf := bytes.NewBuffer(data)
 	fileScanner := bufio.NewScanner(buf)
 

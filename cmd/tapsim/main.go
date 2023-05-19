@@ -99,7 +99,7 @@ func execute(cCtx *cli.Context) error {
 	// Attempt to read the script from file.
 	scriptBytes, err := file.Read(scriptFile)
 	if err == nil {
-		scriptStr, err = file.Parse(scriptBytes)
+		scriptStr, err = file.ParseScript(scriptBytes)
 		if err != nil {
 			return err
 		}
