@@ -1,0 +1,14 @@
+{
+        "44bead69e86453c030d4233e71f03f232aa78143a81668e466cd59dc4e373781": "left node",
+        "66b2f4dc6fb0ed9f9af56bf6d9fa83d4be6bbae24170e4dee673fb233a03a160": "left node",
+        "04" : "value 2",
+        "fc" : "preimage 2",
+        "6d98ab7531be3fb3b3685d4a381dc4cb45efc55f016d02dc09c3cea1c6ced6de": "right node",
+        "437cb43a30226e639b33d84533cfc3ddd970a40055b9c8c0bf7e3795cf184eb6": "left node",
+        "02": "value 1",
+        "fe": "preimage 1",
+        "08dd31f3b8cc620092deabcb68013029e9fbb3255ad5f3f207f3aba026a55b40" : "input inner internal key",
+        "a05c758c030599f7e8a98b00b64e5bd5eb12445cdd1233662fc5b90ea85a768a":  "input commitment",
+        "b5d367f490705282e77edb74c59f90b76b1262ae7e32c5f15db82366c95e3e73": "taptree",
+        "a98ad0645c392373286f0386e633db547581af240ee83fea909e7fa90c515ac1": "output commitment"
+}

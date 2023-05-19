@@ -1,0 +1,79 @@
+# Copy taproot, merkle root and "inner" internal key (the key before it has
+# been tweaked with the commitment) to alt stack.
+OP_3DUP OP_ROT OP_TOALTSTACK OP_TOALTSTACK OP_TOALTSTACK
+
+# Hash [taproot:merkleroot]
+OP_CAT OP_SHA256
+
+# Check input internal key is [x] tweaked with [d = hash(taproot:merkleroot)].
+# [d][x]
+OP_CHECKINPUTCONTRACT
+
+# On alt stack we now have the committed tap and merkle root.
+
+# Claim [value, preimage]
+# Push the hash of the preimage to the alt stack. This will be the new merkle
+# leaf (no committed value means it has been claimed).
+OP_DUP OP_SHA256 OP_TOALTSTACK 
+
+# Calculate hash of preimage:value
+OP_CAT OP_SHA256 
+
+# Use merkle sibling together with new leaf on alt stack to find new merkle
+# node.
+OP_3DUP OP_DROP OP_FROMALTSTACK
+OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256 OP_TOALTSTACK
+
+# Do the same with the current merkle leaf.
+OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256
+
+# Same for next level in the tree.
+OP_3DUP OP_DROP OP_FROMALTSTACK 
+OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256 OP_TOALTSTACK 
+OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256 
+
+# Check merkle root against what we expect. 
+OP_FROMALTSTACK OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
+OP_EQUALVERIFY 
+
+# Claim next preimage
+OP_DUP OP_SHA256 OP_TOALTSTACK 
+
+# Calculate hash of preimage:value
+OP_CAT OP_SHA256 
+
+# Use merkle sibling together with new leaf on alt stack to find new merkle node.
+OP_3DUP OP_DROP OP_FROMALTSTACK
+OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256 OP_TOALTSTACK
+
+# Do the same with the current merkle leaf.
+OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256
+
+# Same for next level in the tree.
+OP_3DUP OP_DROP OP_FROMALTSTACK 
+OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256 OP_TOALTSTACK 
+OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256 
+
+# Check merkle root against what we expect. 
+OP_FROMALTSTACK OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
+OP_EQUALVERIFY 
+
+# New merkle root, existing taproot and "inner" internal key is now on alt stack
+# Hash [taproot:merkleroot]
+OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
+
+# Find hash of taproot:merkleroot
+OP_3DUP OP_DROP OP_CAT OP_SHA256 
+
+# Move make stack order [commitment, taproot, "inner" internal key].
+OP_ROT OP_SWAP
+
+# Check "inner" output internal key is [x] tweaked with [d = hash(taproot:merkleroot)] and
+# [taproot].
+# [d][tapoot][x]
+OP_CHECKOUTPUTCONTRACT
+
+# Left with merkleroot on stack, replace it with a simple OP_1.
+OP_DROP OP_1
+
+
