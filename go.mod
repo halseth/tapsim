@@ -21,3 +21,5 @@ require (
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 // indirect
 	golang.org/x/sys v0.0.0-20200909081042-eff7692f9009 // indirect
 )
+
+replace github.com/btcsuite/btcd => github.com/halseth/btcd v0.0.0-20230828121149-438ed1402d55
