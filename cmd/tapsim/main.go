@@ -46,7 +46,7 @@ func main() {
 				},
 				&cli.StringFlag{
 					Name:  "witness",
-					Usage: "witness stack",
+					Usage: "filename or witness stack as string",
 				},
 				&cli.BoolFlag{
 					Name:    "non-interactive",
@@ -89,7 +89,7 @@ func parse(cCtx *cli.Context) error {
 }
 
 func execute(cCtx *cli.Context) error {
-	var scriptFile, scriptStr, witnessStr string
+	var scriptFile, scriptStr string
 	if cCtx.NArg() > 0 {
 		scriptFile = cCtx.Args().Get(0)
 	} else if cCtx.String("script") != "" {
@@ -109,10 +109,24 @@ func execute(cCtx *cli.Context) error {
 		scriptStr = scriptFile
 	}
 
+	var witnessFile, witnessStr string
 	if cCtx.NArg() > 1 {
-		witnessStr = cCtx.Args().Get(1)
+		witnessFile = cCtx.Args().Get(1)
 	} else if cCtx.String("witness") != "" {
-		witnessStr = cCtx.String("witness")
+		witnessFile = cCtx.String("witness")
+	}
+
+	// Attempt to read the witness from file.
+	witnessBytes, err := file.Read(witnessFile)
+	if err == nil {
+		witnessStr, err = file.ParseScript(witnessBytes)
+		if err != nil {
+			return err
+		}
+	} else {
+		// If we failed reading the file, assume it's the
+		// witness directly.
+		witnessStr = witnessFile
 	}
 
 	nonInteractive := cCtx.Bool("non-interactive")
