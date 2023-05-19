@@ -19,7 +19,7 @@ const scriptFlags = txscript.StandardVerifyFlags
 //
 // If [input/output]KeyBytes is empty, a random key will be generated.
 func Execute(inputKeyBytes, outputKeyBytes []byte, pkScript []byte,
-	witness [][]byte, interactive bool) error {
+	witness [][]byte, interactive bool, tags map[string]string) error {
 
 	// Get random key we will use for the taproot internal key if not
 	// already specified.
@@ -171,7 +171,7 @@ func Execute(inputKeyBytes, outputKeyBytes []byte, pkScript []byte,
 		// Based on the current step counter, we execute up until that
 		// step, then print the state table.
 		table, vmErr := StepScript(
-			setupFunc, txCopy.TxIn[0].Witness, currentStep,
+			setupFunc, txCopy.TxIn[0].Witness, tags, currentStep,
 		)
 
 		// Before handling any error, we draw the state table for the
@@ -208,7 +208,7 @@ func Execute(inputKeyBytes, outputKeyBytes []byte, pkScript []byte,
 var errAbortVM = fmt.Errorf("aborting vm execution")
 
 func StepScript(setupFunc func() (*txscript.Engine, error), witness [][]byte,
-	numSteps int) (string, error) {
+	tags map[string]string, numSteps int) (string, error) {
 
 	vm, err := setupFunc()
 	if err != nil {
@@ -270,6 +270,7 @@ func StepScript(setupFunc func() (*txscript.Engine, error), witness [][]byte,
 			output.StackToString(step.Stack),
 			output.StackToString(step.AltStack),
 			output.StackToString(showWitness),
+			tags,
 		)
 
 		finalState += table

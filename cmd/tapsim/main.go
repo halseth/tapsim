@@ -61,6 +61,10 @@ func main() {
 					Name:  "outputkey",
 					Usage: "use specified internal key for the output",
 				},
+				&cli.StringFlag{
+					Name:  "tagfile",
+					Usage: "optional json file map from hex values to human-readable tags",
+				},
 			},
 		},
 	}
@@ -141,6 +145,20 @@ func execute(cCtx *cli.Context) error {
 		return err
 	}
 
+	tagFile := cCtx.String("tagfile")
+	var tags map[string]string
+	if tagFile != "" {
+		tagBytes, err := file.Read(tagFile)
+		if err != nil {
+			return err
+		}
+
+		tags, err = file.ParseTagMap(tagBytes)
+		if err != nil {
+			return err
+		}
+	}
+
 	fmt.Printf("Script: %s\r\n", scriptStr)
 	fmt.Printf("Witness: %s\r\n", witnessStr)
 
@@ -155,7 +173,8 @@ func execute(cCtx *cli.Context) error {
 	}
 
 	executeErr := script.Execute(
-		inputKeyBytes, outputKeyBytes, parsedScript, parsedWitness, !nonInteractive,
+		inputKeyBytes, outputKeyBytes, parsedScript, parsedWitness,
+		!nonInteractive, tags,
 	)
 	if executeErr != nil {
 		fmt.Printf("script exection failed: %s\r\n", executeErr)

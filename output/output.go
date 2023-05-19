@@ -60,15 +60,17 @@ func WitnessToString(witness [][]byte) []string {
 
 const columnWidth = 40
 
-func ExecutionTable(pc int, script, stack, altStack, witness []string) string {
+func ExecutionTable(pc int, script, stack, altStack, witness []string,
+	tags map[string]string) string {
+
 	fullWidth := 4 * (columnWidth + 2)
 	s := strings.Repeat("-", fullWidth)
 	s += "\n"
 	s += fmt.Sprintf(" %s| %s| %s| %s\n",
-		FixedWidth(columnWidth, "script"),
-		FixedWidth(columnWidth, "stack"),
-		FixedWidth(columnWidth, "alt stack"),
-		FixedWidth(columnWidth, "witness"),
+		FixedWidth(columnWidth, "script", tags),
+		FixedWidth(columnWidth, "stack", tags),
+		FixedWidth(columnWidth, "alt stack", tags),
+		FixedWidth(columnWidth, "witness", tags),
 	)
 	s += strings.Repeat("-", fullWidth)
 	s += "\n"
@@ -103,10 +105,10 @@ func ExecutionTable(pc int, script, stack, altStack, witness []string) string {
 
 		s += fmt.Sprintf("%s%s| %s| %s| %s\n",
 			pcC,
-			FixedWidth(columnWidth, scr),
-			FixedWidth(columnWidth, stk),
-			FixedWidth(columnWidth, alt),
-			FixedWidth(columnWidth, wit),
+			FixedWidth(columnWidth, scr, tags),
+			FixedWidth(columnWidth, stk, tags),
+			FixedWidth(columnWidth, alt, tags),
+			FixedWidth(columnWidth, wit, tags),
 		)
 
 		if scr == "" && stk == "" && alt == "" && wit == "" {
@@ -122,8 +124,18 @@ func ExecutionTable(pc int, script, stack, altStack, witness []string) string {
 	return s
 }
 
-func FixedWidth(w int, s string) string {
+func FixedWidth(w int, s string, tags map[string]string) string {
+	// If there's a tag, we want to show that at the end, always.
+	tagSuffix := ""
+	if tag, ok := tags[s]; ok {
+		tagSuffix = fmt.Sprintf("(%s)", tag)
+	}
+
 	fw := ""
+	w = w - len(tagSuffix)
+	if w <= 0 {
+		panic("tag too long")
+	}
 	for i := 0; i < w; i++ {
 		if i < len(s) {
 			// For long elements, we want to print the last few
@@ -145,6 +157,8 @@ func FixedWidth(w int, s string) string {
 
 		fw += " "
 	}
+
+	fw += tagSuffix
 
 	return fw
 }

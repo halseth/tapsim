@@ -3,6 +3,7 @@ package file
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"os"
 	"strings"
 )
@@ -46,4 +47,13 @@ func ParseScript(data []byte) (string, error) {
 		}
 	}
 	return script, nil
+}
+
+func ParseTagMap(data []byte) (map[string]string, error) {
+	kv := make(map[string]string)
+	if err := json.Unmarshal(data, &kv); err != nil {
+		return nil, err
+	}
+
+	return kv, nil
 }
