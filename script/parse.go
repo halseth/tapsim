@@ -2,6 +2,7 @@ package script
 
 import (
 	"encoding/hex"
+	"fmt"
 	"strings"
 
 	"github.com/btcsuite/btcd/txscript"
@@ -22,7 +23,7 @@ func Parse(script string) ([]byte, error) {
 		// Otherwise, try to interpret it as data.
 		data, err := hex.DecodeString(o)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parsing %s: %w", o, err)
 		}
 
 		builder.AddData(data)
@@ -48,7 +49,7 @@ func ParseWitness(witness string) ([][]byte, error) {
 		default:
 			data, err = hex.DecodeString(o)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("parsing %s: %w", o, err)
 			}
 		}
 
