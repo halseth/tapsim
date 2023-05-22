@@ -136,10 +136,54 @@ func Execute(inputKeyBytes, outputKeyBytes []byte, pkScript []byte,
 		defer t.Restore()
 	}
 
-	currentStep := 0
+	currentStep := 1
 	prevLines := 0
 	bytes := make([]byte, 3)
 	for {
+		// Based on the current step counter, we execute up until that
+		// step, then print the state table.
+		table, vmErr := StepScript(
+			setupFunc, txCopy.TxIn[0].Witness, tags, currentStep,
+		)
+
+		// Before handling any error, we draw the state table for the
+		// step.
+		clearLines := 0
+		if interactive {
+			clearLines = prevLines
+		}
+
+		output.DrawTable(table, clearLines)
+		if interactive {
+			if currentStep > 1 {
+				fmt.Printf("Script execution: \u2190 back | next \u2192 ")
+			} else {
+				fmt.Printf("Script execution: next \u2192 ")
+			}
+		}
+
+		// Take note of the number of lines just printed, such that we
+		// can clear them on next iteration in case we are using
+		// interactive mode.
+		prevLines = strings.Count(table, "\n") + 1
+
+		// If the VM encountered no error, it means the script
+		// successfully executed to completion.
+		if vmErr == nil {
+			output.ClearLines(1)
+			return nil
+		}
+
+		// If we encountered an error other than errAbortVM,
+		// the script actually failed.
+		if vmErr != errAbortVM {
+			output.ClearLines(1)
+			return vmErr
+		}
+
+		// Otherwise script execution was aborted before it completed,
+		// so we continue with the next step of the execution.
+
 		if interactive {
 			numRead, err := t.Read(bytes)
 			if err != nil {
@@ -158,50 +202,19 @@ func Execute(inputKeyBytes, outputKeyBytes []byte, pkScript []byte,
 				case 68:
 					//fmt.Print("Left arrow key pressed\r\n")
 					currentStep--
+					if currentStep < 1 {
+						currentStep = 1
+					}
 				}
 
 			} else if numRead == 1 && bytes[0] == 3 {
 				// Ctrl+C pressed, quit the program
+				output.ClearLines(1)
 				return fmt.Errorf("execution aborted")
 			}
 		} else {
 			currentStep++
 		}
-
-		// Based on the current step counter, we execute up until that
-		// step, then print the state table.
-		table, vmErr := StepScript(
-			setupFunc, txCopy.TxIn[0].Witness, tags, currentStep,
-		)
-
-		// Before handling any error, we draw the state table for the
-		// step.
-		clearLines := 0
-		if interactive {
-			clearLines = prevLines
-		}
-
-		output.DrawTable(table, clearLines)
-
-		// Take note of the number of lines just printed, such that we
-		// can clear them on next iteration in case we are using
-		// interactive mode.
-		prevLines = strings.Count(table, "\n") + 1
-
-		// If the VM encountered no error, it means the script
-		// successfully executed to completion.
-		if vmErr == nil {
-			return nil
-		}
-
-		// If we encountered an error other than errAbortVM,
-		// the script actually failed.
-		if vmErr != errAbortVM {
-			return vmErr
-		}
-
-		// Otherwise script execution was aborted before it completed,
-		// so we continue with the next step of the execution.
 	}
 }
 
