@@ -2,18 +2,22 @@
 # been tweaked with the commitment) to alt stack.
 OP_3DUP OP_ROT OP_TOALTSTACK OP_TOALTSTACK OP_TOALTSTACK
 
-# Hash [taproot:merkleroot]
+# Hash [taproot:merkleroot]. We commit to the static taproot in the input
+# commitment here since we cannot reference it directly from the script (it would
+# be a cyclic dependency)
 OP_CAT OP_SHA256
 
 # Check input internal key is [x] tweaked with [d = hash(taproot:merkleroot)].
 # [d][x]
 OP_CHECKINPUTCONTRACT
 
-# On alt stack we now have the committed tap and merkle root.
+# On alt stack we now have the committed taproot and merkle root, and the input
+# inner internal key (we keep it for later since we'll verify that the output
+# internal key is the same)
 
-# Claim [value, preimage]
+# ==================== START Claim [value1, preimage1] ==========================
 # Push the hash of the paymenthash (sha256(sha256(preimage)) to the alt stack.
-# This will be  the new merkle leaf (no committed value means it has been
+# This will be the new merkle leaf (no committed value means it has been
 # claimed).
 OP_SHA256 OP_DUP OP_SHA256 OP_TOALTSTACK 
 
@@ -21,7 +25,7 @@ OP_SHA256 OP_DUP OP_SHA256 OP_TOALTSTACK
 OP_CAT OP_SHA256 
 
 # Use merkle sibling together with new leaf on alt stack to find new merkle
-# node.
+# node and push it to the altstack.
 OP_3DUP OP_DROP OP_FROMALTSTACK
 OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256 OP_TOALTSTACK
 
@@ -33,17 +37,21 @@ OP_3DUP OP_DROP OP_FROMALTSTACK
 OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256 OP_TOALTSTACK 
 OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256 
 
-# Check merkle root against what we expect. 
+# Now we're at the top, so check merkle root against what we was committed in
+# the input. 
 OP_FROMALTSTACK OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
 OP_EQUALVERIFY 
+# ==================== END Claim [value1, preimage1] ==========================
 
+# ==================== START Claim [value2, preimage2] ==========================
 # Claim next preimage
 OP_SHA256 OP_DUP OP_SHA256 OP_TOALTSTACK 
 
 # Calculate hash of paymenthash:value
 OP_CAT OP_SHA256 
 
-# Use merkle sibling together with new leaf on alt stack to find new merkle node.
+# Use merkle sibling together with new leaf on alt stack to find new merkle
+# node and push it to the altstack.
 OP_3DUP OP_DROP OP_FROMALTSTACK
 OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256 OP_TOALTSTACK
 
@@ -55,22 +63,23 @@ OP_3DUP OP_DROP OP_FROMALTSTACK
 OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256 OP_TOALTSTACK 
 OP_SWAP OP_IF OP_SWAP OP_ENDIF OP_CAT OP_SHA256 
 
-# Check merkle root against what we expect. 
+# Now we're at the top, so check merkle root against the one we expect.
 OP_FROMALTSTACK OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
 OP_EQUALVERIFY 
+# ==================== END Claim [value2, preimage2] ==========================
 
 # New merkle root, existing taproot and "inner" internal key is now on alt stack
-# Hash [taproot:merkleroot]
 OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
 
 # Find hash of taproot:merkleroot
+# Hash [taproot:merkleroot], this is the tweak we expect in the output key.
 OP_3DUP OP_DROP OP_CAT OP_SHA256 
 
-# Move make stack order [commitment, taproot, "inner" internal key].
+# Move stack order to [hash(taproot:merkleroot), taproot, "inner" internal key].
 OP_ROT OP_SWAP
 
-# Check "inner" output internal key is [x] tweaked with [d = hash(taproot:merkleroot)] and
-# [taproot].
+# Check "inner" output internal key is [x] tweaked with 
+# [d = hash(taproot:merkleroot)] and [taproot].
 # [d][tapoot][x]
 OP_CHECKOUTPUTCONTRACT
 
