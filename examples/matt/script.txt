@@ -12,11 +12,12 @@ OP_CHECKINPUTCONTRACT
 # On alt stack we now have the committed tap and merkle root.
 
 # Claim [value, preimage]
-# Push the hash of the preimage to the alt stack. This will be the new merkle
-# leaf (no committed value means it has been claimed).
-OP_DUP OP_SHA256 OP_TOALTSTACK 
+# Push the hash of the paymenthash (sha256(sha256(preimage)) to the alt stack.
+# This will be  the new merkle leaf (no committed value means it has been
+# claimed).
+OP_SHA256 OP_DUP OP_SHA256 OP_TOALTSTACK 
 
-# Calculate hash of preimage:value
+# Calculate hash of paymenthash:value
 OP_CAT OP_SHA256 
 
 # Use merkle sibling together with new leaf on alt stack to find new merkle
@@ -37,9 +38,9 @@ OP_FROMALTSTACK OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
 OP_EQUALVERIFY 
 
 # Claim next preimage
-OP_DUP OP_SHA256 OP_TOALTSTACK 
+OP_SHA256 OP_DUP OP_SHA256 OP_TOALTSTACK 
 
-# Calculate hash of preimage:value
+# Calculate hash of paymenthash:value
 OP_CAT OP_SHA256 
 
 # Use merkle sibling together with new leaf on alt stack to find new merkle node.
