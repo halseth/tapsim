@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/btcsuite/btcd v0.23.5-0.20230823225937-ec401d00a149
 	github.com/btcsuite/btcd/btcec/v2 v2.1.3
+	github.com/jessevdk/go-flags v1.4.0
 	github.com/pkg/term v1.1.0
 	github.com/urfave/cli/v2 v2.23.7
 )
