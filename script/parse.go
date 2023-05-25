@@ -32,29 +32,57 @@ func Parse(script string) ([]byte, error) {
 	return builder.Script()
 }
 
-func ParseWitness(witness string) ([][]byte, error) {
+// SignFunc should return a signature for the current input given the private
+// key ID given as an argument.
+type SignFunc func(string) ([]byte, error)
+
+// WitnessGen returns an element to place on the witness stack.
+type WitnessGen func(SignFunc) ([]byte, error)
+
+// ParseWitness parses the given witness string and returns a slice of
+// WitnessGen functions. Each function should provide the witness element at
+// its index, given a function to optionally obtain a signature.
+//
+// Signatures can be created by <sig:privkeyid> in the witness string, which
+// will attempt to produce a signature from the key with name privkeyid.
+func ParseWitness(witness string) ([]WitnessGen, error) {
 	c := strings.Split(witness, " ")
 
-	var witnessStack [][]byte
+	var witnessGen []WitnessGen
 	for _, o := range c {
 		var (
-			data []byte
-			err  error
+			gen WitnessGen
 		)
-		switch o {
+		switch {
 		// Empty element.
-		case "<>":
-			data = []byte{}
+		case o == "<>":
+			gen = func(SignFunc) ([]byte, error) {
+				return []byte{}, nil
+			}
+
+		// Signature.
+		case strings.HasPrefix(o, "<sig:") &&
+			strings.HasSuffix(o, ">"):
+			suf, _ := strings.CutPrefix(o, "<sig:")
+			key, _ := strings.CutSuffix(suf, ">")
+
+			gen = func(sign SignFunc) ([]byte, error) {
+				return sign(key)
+			}
 
 		default:
-			data, err = hex.DecodeString(o)
+			data, err := hex.DecodeString(o)
 			if err != nil {
 				return nil, fmt.Errorf("parsing %s: %w", o, err)
 			}
+
+			gen = func(SignFunc) ([]byte, error) {
+				return data, nil
+			}
 		}
 
-		witnessStack = append(witnessStack, data)
+		witnessGen = append(witnessGen, gen)
 	}
 
-	return witnessStack, nil
+	return witnessGen, nil
 }

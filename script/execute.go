@@ -17,19 +17,39 @@ const scriptFlags = txscript.StandardVerifyFlags
 // Execute builds a tap leaf using the passed pkScript and executes it step by
 // step with the provided witness.
 //
+// privKeyBytes should map names of private keys given in the input witness to
+// key bytes. An empty key will generate a random one.
+//
 // If [input/output]KeyBytes is empty, a random key will be generated.
-func Execute(inputKeyBytes, outputKeyBytes []byte, pkScript []byte,
-	witness [][]byte, interactive bool, tags map[string]string) error {
+func Execute(privKeyBytes map[string][]byte, inputKeyBytes, outputKeyBytes []byte, pkScript []byte,
+	witnessGen []WitnessGen, interactive bool, tags map[string]string) error {
 
-	// Get random key we will use for the taproot internal key if not
-	// already specified.
-	privKey, err := btcec.NewPrivateKey()
-	if err != nil {
-		return err
+	// Parse the input private keys.
+	privKeys := make(map[string]*btcec.PrivateKey)
+	for k, v := range privKeyBytes {
+		var (
+			key *btcec.PrivateKey
+			err error
+		)
+		// If the key is empty, generate a random one.
+		if len(v) == 0 {
+			key, err = btcec.NewPrivateKey()
+			if err != nil {
+				return err
+			}
+		} else {
+			key, _ = btcec.PrivKeyFromBytes(v)
+		}
+		privKeys[k] = key
 	}
 
 	var inputKey *btcec.PublicKey
 	if len(inputKeyBytes) == 0 {
+		privKey, err := btcec.NewPrivateKey()
+		if err != nil {
+			return err
+		}
+
 		inputKey = privKey.PubKey()
 	} else {
 		var err error
@@ -41,6 +61,11 @@ func Execute(inputKeyBytes, outputKeyBytes []byte, pkScript []byte,
 
 	var outputKey *btcec.PublicKey
 	if len(outputKeyBytes) == 0 {
+		privKey, err := btcec.NewPrivateKey()
+		if err != nil {
+			return err
+		}
+
 		outputKey = privKey.PubKey()
 	} else {
 		var err error
@@ -101,13 +126,33 @@ func Execute(inputKeyBytes, outputKeyBytes []byte, pkScript []byte,
 		prevOut.PkScript, prevOut.Value,
 	)
 
+	sigHashes := txscript.NewTxSigHashes(tx, prevOutFetcher)
+	signFunc := func(keyID string) ([]byte, error) {
+		privKey, ok := privKeys[keyID]
+		if !ok {
+			return nil, fmt.Errorf("private key %s not known", keyID)
+		}
+		return txscript.RawTxInTapscriptSignature(
+			tx, sigHashes, 0, prevOut.Value, prevOut.PkScript, tapLeaf,
+			txscript.SigHashDefault, privKey,
+		)
+	}
+
+	var combinedWitness wire.TxWitness
+	for _, gen := range witnessGen {
+		w, err := gen(signFunc)
+		if err != nil {
+			return err
+		}
+
+		combinedWitness = append(combinedWitness, w)
+	}
+
 	ctrlBlockBytes, err := ctrlBlock.ToBytes()
 	if err != nil {
 		return err
 	}
 
-	var combinedWitness wire.TxWitness
-	combinedWitness = append(combinedWitness, witness...)
 	combinedWitness = append(combinedWitness, pkScript, ctrlBlockBytes)
 
 	txCopy := tx.Copy()

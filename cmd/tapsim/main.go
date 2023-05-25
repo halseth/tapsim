@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/halseth/tapsim/file"
 	"github.com/halseth/tapsim/script"
@@ -53,6 +54,11 @@ func main() {
 					Aliases: []string{"ni"},
 					Usage:   "disable interactive mode",
 				},
+				&cli.StringFlag{
+					Name:  "privkeys",
+					Usage: "specify private keys as \"key1:<hex>,key2:<hex>\" to sign the transaction. Set <hex> empty to generate a random key with the given ID.",
+				},
+
 				&cli.StringFlag{
 					Name:  "inputkey",
 					Usage: "use specified internal key for the input",
@@ -134,6 +140,18 @@ func execute(cCtx *cli.Context) error {
 	}
 
 	nonInteractive := cCtx.Bool("non-interactive")
+	privKeys := strings.Split(cCtx.String("privkeys"), ",")
+	keyMap := make(map[string][]byte)
+	for _, privKeyStr := range privKeys {
+		k := strings.Split(privKeyStr, ":")
+		privKeyBytes, err := hex.DecodeString(k[1])
+		if err != nil {
+			return err
+		}
+
+		keyMap[k[0]] = privKeyBytes
+	}
+
 	inputKeyStr := cCtx.String("inputkey")
 	inputKeyBytes, err := hex.DecodeString(inputKeyStr)
 	if err != nil {
@@ -173,8 +191,8 @@ func execute(cCtx *cli.Context) error {
 	}
 
 	executeErr := script.Execute(
-		inputKeyBytes, outputKeyBytes, parsedScript, parsedWitness,
-		!nonInteractive, tags,
+		keyMap, inputKeyBytes, outputKeyBytes, parsedScript,
+		parsedWitness, !nonInteractive, tags,
 	)
 	if executeErr != nil {
 		fmt.Printf("script exection failed: %s\r\n", executeErr)
