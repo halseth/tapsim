@@ -5,4 +5,7 @@
 /cmd/keys/keys
 /cmd/tweak/tweak
 /cmd/merkle/merkle
+/keys
+/merkle
+/tweak
 /tapsim
