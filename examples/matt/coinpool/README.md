@@ -46,7 +46,7 @@ Now create a merkle tree from these values.
 
 Now we can simulate a UTXO that commits to this merkle root, and that way
 encode the current state of the coin pool. We'll assume the sum of the balances
-are sent to a taproot output encumbered by the tapscript in `script.txt`. The
+are sent to a taproot output encumbered by the tapscript in [script.txt](script.txt). The
 keyspend path of the output will be a n-of-n multisig amongst the participants,
 but we'll ignore that for now.
 
@@ -158,4 +158,4 @@ commitment by replacing the public key with a dummy value. Finally it checks
 that the created output is indeed committing to the new commitment and is of
 the expected value (TODO(halseth): need to add value verification).
 
-More detailed commentary can be found in `script.txt´.
+More detailed commentary can be found in [script.txt](script.txt).
