@@ -8,12 +8,14 @@ the balances of each amongst themselves. As long as all participants are
 cooperating, they are gladly signing updated state transactions that reflect
 the current balances. However, if one or more of the participants stops
 cooperating or goes offline, the state cannot progress and we'll need an
-unilateral exit clause. 
+unilateral exit clause.[^1]
 
 In this example we will encode such an unilateral exit clause using the
 hypothetical opcodes mentioned above. After a participant has exited, the
 remaining participants can still continue operating the coin pool with their
-balances intact.
+balances intact. Note that this is only demonstrating a limited variant of the
+pool exit clause, several other improvements to Bitcoin script are believed to
+be necessary to fully implement coin pools.
 
 ## Usage
 Compile the tools needed (assuming in root folder):
@@ -159,3 +161,5 @@ that the created output is indeed committing to the new commitment and is of
 the expected value (TODO(halseth): need to add value verification).
 
 More detailed commentary can be found in [script.txt](script.txt).
+
+[^1]: https://coinpool.dev/
