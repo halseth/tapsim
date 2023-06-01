@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/halseth/tapsim/file"
 	"github.com/halseth/tapsim/script"
 	"github.com/urfave/cli/v2"
@@ -67,6 +69,11 @@ func main() {
 					Name:  "outputkey",
 					Usage: "use specified internal key for the output",
 				},
+				&cli.StringFlag{
+					Name:  "outputs",
+					Usage: "specify taproot outputs as \"<pubkey>:<value>\"",
+				},
+
 				&cli.StringFlag{
 					Name:  "tagfile",
 					Usage: "optional json file map from hex values to human-readable tags",
@@ -161,9 +168,43 @@ func execute(cCtx *cli.Context) error {
 		return err
 	}
 	outputKeyStr := cCtx.String("outputkey")
-	outputKeyBytes, err := hex.DecodeString(outputKeyStr)
-	if err != nil {
-		return err
+	outputsStr := cCtx.String("outputs")
+
+	if len(outputKeyStr) > 0 && len(outputsStr) > 0 {
+		return fmt.Errorf("cannot set both outputkey and outputs")
+	}
+
+	if len(outputKeyStr) > 0 {
+		outputsStr = fmt.Sprintf("%s:100000000", outputKeyStr)
+	}
+
+	outputs := strings.Split(outputsStr, ",")
+	var txOutKeys []script.TxOutput
+	for _, oStr := range outputs {
+		if oStr == "" {
+			continue
+		}
+
+		k := strings.Split(oStr, ":")
+		pubKeyBytes, err := hex.DecodeString(k[0])
+		if err != nil {
+			return err
+		}
+
+		pubKey, err := schnorr.ParsePubKey(pubKeyBytes)
+		if err != nil {
+			return err
+		}
+
+		val, err := strconv.ParseInt(k[1], 10, 0)
+		if err != nil {
+			return err
+		}
+
+		txOutKeys = append(txOutKeys, script.TxOutput{
+			OutputKey: pubKey,
+			Value:     val,
+		})
 	}
 
 	tagFile := cCtx.String("tagfile")
@@ -194,7 +235,7 @@ func execute(cCtx *cli.Context) error {
 	}
 
 	executeErr := script.Execute(
-		keyMap, inputKeyBytes, outputKeyBytes, parsedScript,
+		keyMap, inputKeyBytes, txOutKeys, parsedScript,
 		parsedWitness, !nonInteractive, tags,
 	)
 	if executeErr != nil {

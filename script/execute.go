@@ -12,6 +12,11 @@ import (
 	"github.com/pkg/term"
 )
 
+type TxOutput struct {
+	OutputKey *btcec.PublicKey
+	Value     int64
+}
+
 const scriptFlags = txscript.StandardVerifyFlags
 
 // Execute builds a tap leaf using the passed pkScript and executes it step by
@@ -21,7 +26,7 @@ const scriptFlags = txscript.StandardVerifyFlags
 // key bytes. An empty key will generate a random one.
 //
 // If [input/output]KeyBytes is empty, a random key will be generated.
-func Execute(privKeyBytes map[string][]byte, inputKeyBytes, outputKeyBytes []byte, pkScript []byte,
+func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte, outputs []TxOutput, pkScript []byte,
 	witnessGen []WitnessGen, interactive bool, tags map[string]string) error {
 
 	// Parse the input private keys.
@@ -59,20 +64,14 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes, outputKeyBytes []byt
 		}
 	}
 
-	var outputKey *btcec.PublicKey
-	if len(outputKeyBytes) == 0 {
+	if len(outputs) == 0 {
 		privKey, err := btcec.NewPrivateKey()
 		if err != nil {
 			return err
 		}
 
-		outputKey = privKey.PubKey()
-	} else {
-		var err error
-		outputKey, err = schnorr.ParsePubKey(outputKeyBytes)
-		if err != nil {
-			return err
-		}
+		outputKey := privKey.PubKey()
+		outputs = append(outputs, TxOutput{outputKey, 1e8})
 	}
 
 	tapLeaf := txscript.NewBaseTapLeaf(pkScript)
@@ -93,19 +92,9 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes, outputKeyBytes []byt
 		return err
 	}
 
-	outputTapKey := txscript.ComputeTaprootOutputKey(
-		outputKey, tapScriptRootHash[:],
-	)
-
 	fmt.Printf("taptree: %x\n", tapScriptRootHash[:])
 	fmt.Printf("input internal key: %x\n", schnorr.SerializePubKey(inputKey))
 	fmt.Printf("input taproot key: %x\n", schnorr.SerializePubKey(inputTapKey))
-	fmt.Printf("output internal key: %x\n", schnorr.SerializePubKey(outputKey))
-	fmt.Printf("output taproot key: %x\n", schnorr.SerializePubKey(outputTapKey))
-	outputScript, err := txscript.PayToTaprootScript(outputTapKey)
-	if err != nil {
-		return err
-	}
 
 	tx := wire.NewMsgTx(2)
 	tx.AddTxIn(&wire.TxIn{
@@ -113,10 +102,21 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes, outputKeyBytes []byt
 			Index: 0,
 		},
 	})
-	tx.AddTxOut(&wire.TxOut{
-		Value:    1e8,
-		PkScript: outputScript,
-	})
+
+	for i, o := range outputs {
+		fmt.Printf("output[%d] taproot key: %x:%d\n",
+			i, schnorr.SerializePubKey(o.OutputKey), o.Value)
+
+		outputScript, err := txscript.PayToTaprootScript(o.OutputKey)
+		if err != nil {
+			return err
+		}
+
+		tx.AddTxOut(&wire.TxOut{
+			Value:    o.Value,
+			PkScript: outputScript,
+		})
+	}
 
 	prevOut := &wire.TxOut{
 		Value:    1e8,
