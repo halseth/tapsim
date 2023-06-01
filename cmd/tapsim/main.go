@@ -143,6 +143,9 @@ func execute(cCtx *cli.Context) error {
 	privKeys := strings.Split(cCtx.String("privkeys"), ",")
 	keyMap := make(map[string][]byte)
 	for _, privKeyStr := range privKeys {
+		if privKeyStr == "" {
+			continue
+		}
 		k := strings.Split(privKeyStr, ":")
 		privKeyBytes, err := hex.DecodeString(k[1])
 		if err != nil {
