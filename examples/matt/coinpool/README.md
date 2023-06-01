@@ -117,7 +117,7 @@ readable names to the various data blobs:
 echo "{}" > tags.json
 cat tags.json | jq ". += {\"`sed -n 1p tweaks.txt | awk -F": " '{print $2}'`\":\"inner internal key\"}" > tags.json
 cat tags.json | jq ". += {\"`sed -n 2p tweaks.txt | awk -F": " '{print $2}'`\":\"taproot\"}" > tags.json
-cat tags.json | jq ". += {\"`sed -n 4p tweaks.txt | awk -F": " '{print $2}'`\":\"input commitment\"}" > tags.jsono
+cat tags.json | jq ". += {\"`sed -n 4p tweaks.txt | awk -F": " '{print $2}'`\":\"input commitment\"}" > tags.json
 cat tags.json | jq ". += {\"`sed -n 5p tweaks.txt | awk -F": " '{print $2}'`\":\"input internal key\"}" > tags.json
 
 cat tags.json | jq ". += {\"`sed -n 4p output_tweaks.txt | awk -F": " '{print $2}'`\":\"output_commitment\"}" > tags.json
