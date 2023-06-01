@@ -1,0 +1,49 @@
+# Exactly two outputs embedded (value+key). Since we only care about the final
+# output key, we don't have to care whether it contains a taproot, has data
+# embedded etc.
+
+# Copy merkle root to alt stack.
+OP_DUP OP_TOALTSTACK 
+
+# Check input internal key is [x] tweaked with [d = hash(merkleroot)].
+# [d][x]
+OP_CHECKINPUTCONTRACT
+#OP_2DROP # temp
+
+# On alt stack we now have the committed merkle root and key.
+# Start checking the outputs against the merkle root.
+# TODO: root must be shared between all possible CTV transactions/executing tapleaf.
+
+# Hash (key+) and push it to altstack.
+OP_2DUP OP_CAT OP_SHA256 OP_TOALTSTACK
+
+OP_SWAP OP_DROP # temp, drop value since not supported by opcode yet.
+
+# Check output key [i] is [x] tweaked with 
+# [taproot], and no embedded data.
+# [i][d][tapoot][x]
+00 # no taproot to check
+00 # no embedded data
+00 # index 0
+OP_CHECKOUTPUTCONTRACT
+
+# Next output.
+# Hash (value+key) and push it to altstack.
+OP_2DUP OP_CAT OP_SHA256 OP_TOALTSTACK
+
+OP_SWAP OP_DROP # temp, drop value since not supported by opcode yet.
+
+# Check output key [i] is [x] tweaked with 
+# [taproot], and no embedded data.
+# [i][d][tapoot][x]
+00 # no taproot to check
+00 # no embedded data
+01 # index 1
+OP_CHECKOUTPUTCONTRACT
+
+# Check against merkle root.
+OP_FROMALTSTACK OP_FROMALTSTACK
+OP_CAT OP_SHA256
+
+OP_FROMALTSTACK 
+OP_EQUAL
