@@ -117,7 +117,11 @@ func run() error {
 	empty := []byte{}
 	merkleOut := txscript.ComputeTaprootOutputKey(tweakedMerkle, empty)
 	merkleOutBytes := schnorr.SerializePubKey(merkleOut)
-	fmt.Println("taproot output key(merkle):", hex.EncodeToString(merkleOutBytes))
+	fmt.Println("taproot output key(merkle), no script:", hex.EncodeToString(merkleOutBytes))
+
+	emptyOut := txscript.ComputeTaprootOutputKey(pubKey, empty)
+	emptyOutBytes := schnorr.SerializePubKey(emptyOut)
+	fmt.Println("taproot output key, no tweak no script:", hex.EncodeToString(emptyOutBytes))
 
 	return nil
 }
