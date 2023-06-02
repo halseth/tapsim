@@ -46,6 +46,10 @@ type WitnessGen func(SignFunc) ([]byte, error)
 // Signatures can be created by <sig:privkeyid> in the witness string, which
 // will attempt to produce a signature from the key with name privkeyid.
 func ParseWitness(witness string) ([]WitnessGen, error) {
+	if witness == "" {
+		return nil, nil
+	}
+
 	c := strings.Split(witness, " ")
 
 	var witnessGen []WitnessGen
