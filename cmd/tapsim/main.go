@@ -48,6 +48,15 @@ func main() {
 					Usage: "filename or output script as string",
 				},
 				&cli.StringFlag{
+					Name:  "scripts",
+					Usage: "list of filenames with output scripts to assemble into a taptree",
+				},
+				&cli.IntFlag{
+					Name:  "scriptindex",
+					Usage: "index of script from \"scripts\" to execute",
+				},
+
+				&cli.StringFlag{
 					Name:  "witness",
 					Usage: "filename or witness stack as string",
 				},
@@ -106,24 +115,46 @@ func parse(cCtx *cli.Context) error {
 }
 
 func execute(cCtx *cli.Context) error {
-	var scriptFile, scriptStr string
-	if cCtx.NArg() > 0 {
-		scriptFile = cCtx.Args().Get(0)
-	} else if cCtx.String("script") != "" {
-		scriptFile = cCtx.String("script")
+	var scriptStr []string
+	scriptFile := cCtx.String("script")
+	scriptFiles := cCtx.String("scripts")
+
+	if scriptFile != "" && scriptFiles != "" {
+		return fmt.Errorf("both script and scripts cannot be set")
 	}
 
-	// Attempt to read the script from file.
-	scriptBytes, err := file.Read(scriptFile)
-	if err == nil {
-		scriptStr, err = file.ParseScript(scriptBytes)
-		if err != nil {
-			return err
+	if scriptFile != "" {
+		// Attempt to read the script from file.
+		scriptBytes, err := file.Read(scriptFile)
+		if err == nil {
+			s, err := file.ParseScript(scriptBytes)
+			if err != nil {
+				return err
+			}
+
+			scriptStr = []string{s}
+		} else {
+			// If we failed reading the file, assume it's the
+			// script directly.
+			scriptStr = []string{scriptFile}
 		}
 	} else {
-		// If we failed reading the file, assume it's the
-		// script directly.
-		scriptStr = scriptFile
+		for _, f := range strings.Split(scriptFiles, ",") {
+			if f == "" {
+				continue
+			}
+
+			scriptBytes, err := file.Read(f)
+			if err != nil {
+				return err
+			}
+			s, err := file.ParseScript(scriptBytes)
+			if err != nil {
+				return err
+			}
+
+			scriptStr = append(scriptStr, s)
+		}
 	}
 
 	var witnessFile, witnessStr string
@@ -221,12 +252,18 @@ func execute(cCtx *cli.Context) error {
 		}
 	}
 
-	fmt.Printf("Script: %s\r\n", scriptStr)
+	scriptIndex := cCtx.Int("scriptindex")
+	fmt.Printf("Script: %s\r\n", scriptStr[scriptIndex])
 	fmt.Printf("Witness: %s\r\n", witnessStr)
 
-	parsedScript, err := script.Parse(scriptStr)
-	if err != nil {
-		return err
+	var parsedScripts [][]byte
+	for _, s := range scriptStr {
+		parsedScript, err := script.Parse(s)
+		if err != nil {
+			return err
+		}
+
+		parsedScripts = append(parsedScripts, parsedScript)
 	}
 
 	parsedWitness, err := script.ParseWitness(witnessStr)
@@ -235,7 +272,7 @@ func execute(cCtx *cli.Context) error {
 	}
 
 	executeErr := script.Execute(
-		keyMap, inputKeyBytes, txOutKeys, parsedScript,
+		keyMap, inputKeyBytes, txOutKeys, parsedScripts, scriptIndex,
 		parsedWitness, !nonInteractive, tags,
 	)
 	if executeErr != nil {

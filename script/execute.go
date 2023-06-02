@@ -26,7 +26,8 @@ const scriptFlags = txscript.StandardVerifyFlags
 // key bytes. An empty key will generate a random one.
 //
 // If [input/output]KeyBytes is empty, a random key will be generated.
-func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte, outputs []TxOutput, pkScript []byte,
+func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
+	outputs []TxOutput, pkScripts [][]byte, scriptIndex int,
 	witnessGen []WitnessGen, interactive bool, tags map[string]string) error {
 
 	// Parse the input private keys.
@@ -74,10 +75,20 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte, outputs []TxO
 		outputs = append(outputs, TxOutput{outputKey, 1e8})
 	}
 
-	tapLeaf := txscript.NewBaseTapLeaf(pkScript)
-	tapScriptTree := txscript.AssembleTaprootScriptTree(tapLeaf)
+	var tapLeaves []txscript.TapLeaf
+	var tapLeaf txscript.TapLeaf
+	for i, pkScript := range pkScripts {
+		t := txscript.NewBaseTapLeaf(pkScript)
+		tapLeaves = append(tapLeaves, t)
 
-	ctrlBlock := tapScriptTree.LeafMerkleProofs[0].ToControlBlock(
+		if i == scriptIndex {
+			tapLeaf = t
+		}
+	}
+
+	tapScriptTree := txscript.AssembleTaprootScriptTree(tapLeaves...)
+
+	ctrlBlock := tapScriptTree.LeafMerkleProofs[scriptIndex].ToControlBlock(
 		inputKey,
 	)
 
@@ -153,7 +164,7 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte, outputs []TxO
 		return err
 	}
 
-	combinedWitness = append(combinedWitness, pkScript, ctrlBlockBytes)
+	combinedWitness = append(combinedWitness, pkScripts[scriptIndex], ctrlBlockBytes)
 
 	txCopy := tx.Copy()
 	txCopy.TxIn[0].Witness = wire.TxWitness{}
