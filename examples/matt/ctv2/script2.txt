@@ -1,0 +1,23 @@
+# Exactly two outputs. Since we only care about the final # output key, we
+# don't have to care whether it contains a taproot, has data embedded etc.
+
+# Check output key [i] is [x] tweaked with 
+# [taproot], and no embedded data.
+# [i][d][tapoot][x]
+<key1>
+00 # no taproot to check
+00 # no embedded data
+00 # index 0
+OP_CHECKOUTPUTCONTRACT
+
+# Check output key [i] is [x] tweaked with 
+# [taproot], and no embedded data.
+# [i][d][tapoot][x]
+<key2>
+00 # no taproot to check
+00 # no embedded data
+01 # index 1
+OP_CHECKOUTPUTCONTRACT
+
+# Add true value for script to succeed.
+OP_1
