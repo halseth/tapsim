@@ -4,20 +4,22 @@
 # Check output key [i] is [x] tweaked with 
 # [taproot], and no embedded data.
 # [i][d][tapoot][x]
-<key1>
 00 # no taproot to check
+<key1>
 00 # no embedded data
 00 # index 0
-OP_CHECKOUTPUTCONTRACT
+00 # flags
+OP_CHECKCONTRACTVERIFY
 
 # Check output key [i] is [x] tweaked with 
 # [taproot], and no embedded data.
 # [i][d][tapoot][x]
-<key2>
 00 # no taproot to check
+<key2>
 00 # no embedded data
 01 # index 1
-OP_CHECKOUTPUTCONTRACT
+00 # flags
+OP_CHECKCONTRACTVERIFY
 
 # Add true value for script to succeed.
 OP_1
