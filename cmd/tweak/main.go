@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 
@@ -68,12 +67,6 @@ func run() error {
 	tapScriptTree := txscript.AssembleTaprootScriptTree(tapLeaf)
 	tapScriptRootHash := tapScriptTree.RootNode.TapHash()
 
-	var cat []byte
-
-	cat = append(cat, tapScriptRootHash[:]...)
-	cat = append(cat, merkleBytes...)
-	commitment := sha256.Sum256(cat)
-
 	// Random key.
 	var keyBytes []byte
 	if cfg.Key == "" {
@@ -94,7 +87,6 @@ func run() error {
 	fmt.Println("inner internal key:", hex.EncodeToString(keyBytes))
 	fmt.Println("taproot:", hex.EncodeToString(tapScriptRootHash[:]))
 	fmt.Println("merkle root:", hex.EncodeToString(merkleBytes[:]))
-	fmt.Println("commitment (taproot:merkle):", hex.EncodeToString(commitment[:]))
 
 	pubKey, err := schnorr.ParsePubKey(keyBytes)
 	if err != nil {
@@ -102,20 +94,16 @@ func run() error {
 	}
 
 	// Tweak pubkey with data.
-	tweaked := txscript.ComputeTaprootOutputKey(pubKey, commitment[:])
+	tweaked := txscript.ComputeTaprootOutputKey(pubKey, merkleBytes[:])
 	tweakedBytes := schnorr.SerializePubKey(tweaked)
-	fmt.Println("tweaked(merkle+taproot):", hex.EncodeToString(tweakedBytes))
+	fmt.Println("tweaked(merkle):", hex.EncodeToString(tweakedBytes))
 
 	tweaked2 := txscript.ComputeTaprootOutputKey(tweaked, tapScriptRootHash[:])
 	tweakedBytes2 := schnorr.SerializePubKey(tweaked2)
 	fmt.Println("taproot output key(merkle+taproot):", hex.EncodeToString(tweakedBytes2))
 
-	tweakedMerkle := txscript.ComputeTaprootOutputKey(pubKey, merkleBytes[:])
-	tweakedMerkleBytes := schnorr.SerializePubKey(tweakedMerkle)
-	fmt.Println("tweaked(merkle):", hex.EncodeToString(tweakedMerkleBytes))
-
 	empty := []byte{}
-	merkleOut := txscript.ComputeTaprootOutputKey(tweakedMerkle, empty)
+	merkleOut := txscript.ComputeTaprootOutputKey(tweaked, empty)
 	merkleOutBytes := schnorr.SerializePubKey(merkleOut)
 	fmt.Println("taproot output key(merkle), no script:", hex.EncodeToString(merkleOutBytes))
 
