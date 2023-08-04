@@ -1,5 +1,5 @@
 ### CHECKTEMPLATEVERIFY (OP_CTV)
-Example using opcodes `OP_CHECKOUTPUTCONTRACT` to achieve a CTV-style covenant
+Example using opcodes `OP_CHECKCONTRACTVERIFY` to achieve a CTV-style covenant
 with two valid spending transactions.
 
 ### Introduction
