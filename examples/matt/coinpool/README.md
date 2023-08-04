@@ -1,6 +1,6 @@
 ### Coin pools 
-Example using opcodes `OP_CAT`, `OP_CHECKINPUTCONTRACT` and
-`OP_CHECKOUTPUTCONTRACT` to achieve a coin pool construct.
+Example using opcodes `OP_CAT` and `OP_CHECKCONTRACTVERIFY` to achieve a coin
+pool construct.
 
 ### Introduction
 A coin pool contract lets participants in the contract share an UTXO, tracking
@@ -117,11 +117,11 @@ readable names to the various data blobs:
 echo "{}" > tags.json
 cat tags.json | jq ". += {\"`sed -n 1p tweaks.txt | awk -F": " '{print $2}'`\":\"inner internal key\"}" > tags.json
 cat tags.json | jq ". += {\"`sed -n 2p tweaks.txt | awk -F": " '{print $2}'`\":\"taproot\"}" > tags.json
-cat tags.json | jq ". += {\"`sed -n 4p tweaks.txt | awk -F": " '{print $2}'`\":\"input commitment\"}" > tags.json
-cat tags.json | jq ". += {\"`sed -n 5p tweaks.txt | awk -F": " '{print $2}'`\":\"input internal key\"}" > tags.json
+cat tags.json | jq ". += {\"`sed -n 3p tweaks.txt | awk -F": " '{print $2}'`\":\"input commitment\"}" > tags.json
+cat tags.json | jq ". += {\"`sed -n 4p tweaks.txt | awk -F": " '{print $2}'`\":\"input internal key\"}" > tags.json
 
-cat tags.json | jq ". += {\"`sed -n 4p output_tweaks.txt | awk -F": " '{print $2}'`\":\"output_commitment\"}" > tags.json
-cat tags.json | jq ". += {\"`sed -n 5p output_tweaks.txt | awk -F": " '{print $2}'`\":\"output internal key\"}" > tags.json
+cat tags.json | jq ". += {\"`sed -n 3p output_tweaks.txt | awk -F": " '{print $2}'`\":\"output_commitment\"}" > tags.json
+cat tags.json | jq ". += {\"`sed -n 4p output_tweaks.txt | awk -F": " '{print $2}'`\":\"output internal key\"}" > tags.json
 
 cat tags.json | jq ". += {\"`sed -n 1p merkle_tree.txt | awk -F" " '{print $1}'`\":\"input merkle root\"}" > tags.json
 cat tags.json | jq ". += {\"`sed -n 2p merkle_tree.txt | awk -F" " '{print $1}'`\":\"input merkle[1][0]\"}" > tags.json

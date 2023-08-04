@@ -2,19 +2,17 @@
 # been tweaked with the commitment) to alt stack.
 OP_3DUP OP_ROT OP_TOALTSTACK OP_TOALTSTACK OP_TOALTSTACK
 
-# Hash [taproot:merkleroot]. We commit to the static taproot in the input
-# commitment here since we cannot reference it directly from the script (it would
-# be a cyclic dependency)
-OP_CAT OP_SHA256
+OP_ROT OP_ROT
 
-# Check input internal key is [x] tweaked with [d = hash(taproot:merkleroot)].
-# [d][x]
-OP_CHECKINPUTCONTRACT
+# Check input internal key is [x] tweaked with d = merkleroot, and t = taproot.
+# [t][x][d][index][flags]
+81 # index -1 means current index
+01 # check input flag
+OP_CHECKCONTRACTVERIFY
 
 # On alt stack we now have the committed taproot and merkle root, and the input
 # inner internal key (we keep it for later since we'll verify that the output
 # internal key is the same)
-
 
 # Push the hash of 0x01 to the alt stack.
 # This will be the new merkle leaf (indicating the pubkey is no longer part of
@@ -48,17 +46,14 @@ OP_EQUALVERIFY
 # New merkle root, existing taproot and "inner" internal key is now on alt stack
 OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
 
-# Find hash of taproot:merkleroot
-# Hash [taproot:merkleroot], this is the tweak we expect in the output key.
-OP_3DUP OP_DROP OP_CAT OP_SHA256 
+# Move stack order to [t][x][d]
+OP_ROT 
 
-# Move stack order to [hash(taproot:merkleroot), taproot, "inner" internal key].
-OP_ROT OP_SWAP
+# Check input internal key is [x] tweaked with d = merkleroot, and t = taproot.
+# [t][x][d][index][flags]
+81 # index -1 means current index
+00 # check output flag
+OP_CHECKCONTRACTVERIFY
 
-# Check  output key is [x] tweaked with 
-# [d = hash(taproot:merkleroot)] and [taproot].
-# [d][tapoot][x]
-OP_CHECKOUTPUTCONTRACT
-
-# Left with merkleroot on stack, replace it with a simple OP_1.
-OP_DROP OP_1
+# Add 1 to stack for script to successfully finish.
+OP_1
