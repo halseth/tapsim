@@ -52,7 +52,7 @@ OP_ROT
 # Check input internal key is [x] tweaked with d = merkleroot, and t = taproot.
 # [t][x][d][index][flags]
 81 # index -1 means current index
-00 # check output flag
+02 # check output flag, disable amount check. We currently have no way to verify that the output is exatcly input-exitbalance.
 OP_CHECKCONTRACTVERIFY
 
 # Add 1 to stack for script to successfully finish.
