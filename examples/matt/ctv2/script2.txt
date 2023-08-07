@@ -8,7 +8,7 @@
 <key1>
 00 # no embedded data
 00 # index 0
-00 # flags
+02 # disable output amt check, as splitting input into several outputs is not supported.
 OP_CHECKCONTRACTVERIFY
 
 # Check output key [i] is [x] tweaked with 
@@ -18,7 +18,7 @@ OP_CHECKCONTRACTVERIFY
 <key2>
 00 # no embedded data
 01 # index 1
-00 # flags
+02 # disable output amt check, as splitting input into several outputs is not supported.
 OP_CHECKCONTRACTVERIFY
 
 # Add true value for script to succeed.

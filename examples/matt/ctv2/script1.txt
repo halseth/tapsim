@@ -8,7 +8,7 @@
 <key1>
 00 # no embedded data
 00 # index 0
-00 # flags
+00 # do output amt check, since we have single output.
 OP_CHECKCONTRACTVERIFY
 
 # Add true value for script to succeed.

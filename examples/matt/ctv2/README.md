@@ -65,7 +65,7 @@ Now we have all the pieces gathered to run the script.
 Spending with tx1:
 
 ```bash
-./tapsim execute --scripts "script1.txt,script2.txt" --scriptindex 0 --tagfile tags.json --outputs="`sed -n 1p keys1.txt | awk -F',' '{print $2}'`:30000"
+./tapsim execute --scripts "script1.txt,script2.txt" --scriptindex 0 --tagfile tags.json --outputs="`sed -n 1p keys1.txt | awk -F',' '{print $2}'`:100000000"
 ```
 
 Spending with tx2:
