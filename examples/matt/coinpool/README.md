@@ -147,7 +147,7 @@ cat tags.json | jq ". += {\"`sed -n 2p balances.txt`\":\"balance\"}" > tags.json
 Now we have all the pieces gathered to run the script.
 
 ```bash
-./tapsim execute --script examples/matt/coinpool/script.txt  --witness witness.txt --tagfile tags.json --inputkey "`sed -n 5p tweaks.txt | awk -F": " '{print $2}'`" --outputkey "`sed -n 5p output_tweaks.txt | awk -F": " '{print $2}'`" --privkeys "privkey:`sed -n 2p keys.txt | awk -F"," '{print $1}'`"
+./tapsim execute --script examples/matt/coinpool/script.txt  --witness witness.txt --tagfile tags.json --inputkey "`sed -n 4p tweaks.txt | awk -F": " '{print $2}'`" --outputkey "`sed -n 5p output_tweaks.txt | awk -F": " '{print $2}'`" --privkeys "privkey:`sed -n 2p keys.txt | awk -F"," '{print $1}'`"
 ```
 
 Note that we supply the private key corresponding to the pubkey that is exiting
