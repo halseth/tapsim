@@ -1,6 +1,6 @@
 ### CHECKTEMPLATEVERIFY (OP_CTV)
-Example using opcodes `OP_CAT`, `OP_CHECKINPUTCONTRACT` and
-`OP_CHECKOUTPUTCONTRACT` to achieve a CTV-style covenant.
+Example using opcodes `OP_CAT` and `OP_CHECKCONTRACTVERIFY` to achieve a
+CTV-style covenant.
 
 ### Introduction
 CTV lets and output encode a static set of further spending transactions,
