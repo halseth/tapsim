@@ -3,7 +3,7 @@ module github.com/halseth/tapsim
 go 1.19
 
 require (
-	github.com/btcsuite/btcd v0.23.4
+	github.com/btcsuite/btcd v0.23.5-0.20230823225937-ec401d00a149
 	github.com/btcsuite/btcd/btcec/v2 v2.1.3
 	github.com/pkg/term v1.1.0
 	github.com/urfave/cli/v2 v2.23.7
@@ -21,5 +21,3 @@ require (
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 // indirect
 	golang.org/x/sys v0.0.0-20200909081042-eff7692f9009 // indirect
 )
-
-replace github.com/btcsuite/btcd => github.com/halseth/btcd v0.0.0-20230515091741-ab32e110eed1

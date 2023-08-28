@@ -170,11 +170,12 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 	txCopy.TxIn[0].Witness = wire.TxWitness{}
 	txCopy.TxIn[0].Witness = combinedWitness
 
-	setupFunc := func() (*txscript.Engine, error) {
+	setupFunc := func(cb func(*txscript.StepInfo) error) (*txscript.Engine, error) {
 		sigHashes := txscript.NewTxSigHashes(tx, prevOutFetcher)
-		return txscript.NewEngine(
+		return txscript.NewDebugEngine(
 			prevOut.PkScript, txCopy, 0, scriptFlags,
 			nil, sigHashes, prevOut.Value, prevOutFetcher,
+			cb,
 		)
 	}
 
@@ -276,13 +277,13 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 
 var errAbortVM = fmt.Errorf("aborting vm execution")
 
-func StepScript(setupFunc func() (*txscript.Engine, error), witness [][]byte,
+func StepScript(setupFunc func(func(*txscript.StepInfo) error) (*txscript.Engine, error), witness [][]byte,
 	tags map[string]string, numSteps int) (string, error) {
 
-	vm, err := setupFunc()
-	if err != nil {
-		return "", err
-	}
+	var (
+		vm  *txscript.Engine
+		err error
+	)
 
 	const (
 		SCRIPT_SCRIPTSIG      = 0
@@ -297,7 +298,7 @@ func StepScript(setupFunc func() (*txscript.Engine, error), witness [][]byte,
 		stepCounter   = 0
 		finalState    string
 	)
-	vm.StepCallback = func(step *txscript.StepInfo) error {
+	stepCallback := func(step *txscript.StepInfo) error {
 		finalState = ""
 		var showWitness [][]byte
 
@@ -352,6 +353,11 @@ func StepScript(setupFunc func() (*txscript.Engine, error), witness [][]byte,
 		}
 
 		return nil
+	}
+
+	vm, err = setupFunc(stepCallback)
+	if err != nil {
+		return "", err
 	}
 
 	vmErr := vm.Execute()
