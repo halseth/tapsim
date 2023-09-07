@@ -10,6 +10,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/halseth/tapsim/file"
+	"github.com/halseth/tapsim/output"
 	"github.com/halseth/tapsim/script"
 	"github.com/urfave/cli/v2"
 )
@@ -87,6 +88,10 @@ func main() {
 					Name:  "tagfile",
 					Usage: "optional json file map from hex values to human-readable tags",
 				},
+				&cli.IntFlag{
+					Name:  "colwidth",
+					Usage: "output column witdth (default: 40)",
+				},
 			},
 		},
 	}
@@ -115,6 +120,12 @@ func parse(cCtx *cli.Context) error {
 }
 
 func execute(cCtx *cli.Context) error {
+
+	colWidth := cCtx.Int("colwidth")
+	if colWidth > 0 {
+		output.ColumnWidth = colWidth
+	}
+
 	var scriptStr []string
 	scriptFile := cCtx.String("script")
 	scriptFiles := cCtx.String("scripts")
