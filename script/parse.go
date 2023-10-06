@@ -20,6 +20,12 @@ func Parse(script string) ([]byte, error) {
 			continue
 		}
 
+		// Empty element.
+		if o == "<>" {
+			builder.AddData([]byte{})
+			continue
+		}
+
 		// Otherwise, try to interpret it as data.
 		data, err := hex.DecodeString(o)
 		if err != nil {
