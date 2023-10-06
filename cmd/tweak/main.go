@@ -13,9 +13,10 @@ import (
 )
 
 type config struct {
-	Key    string `short:"k" long:"key" description:"key to use (random if empty)"`
-	Script string `long:"script" description:"script or script file"`
-	Merkle string `long:"merkle" description:"merkle commitment"`
+	Key     string `short:"k" long:"key" description:"key to use (random if empty)"`
+	Script  string `long:"script" description:"script or script file"`
+	Taproot string `long:"taproot" description:"taptree root hash"`
+	Merkle  string `long:"merkle" description:"merkle commitment"`
 }
 
 var cfg = config{}
@@ -34,6 +35,10 @@ func main() {
 }
 
 func run() error {
+	if cfg.Script != "" && cfg.Taproot != "" {
+		return fmt.Errorf("cannot use both script and taproot")
+	}
+
 	var scriptStr string
 	scriptBytes, err := file.Read(cfg.Script)
 	if err == nil {
@@ -65,7 +70,15 @@ func run() error {
 
 	tapLeaf := txscript.NewBaseTapLeaf(pkScript)
 	tapScriptTree := txscript.AssembleTaprootScriptTree(tapLeaf)
-	tapScriptRootHash := tapScriptTree.RootNode.TapHash()
+	tapRoot := tapScriptTree.RootNode.TapHash()
+	tapScriptRootHash := tapRoot[:]
+
+	if cfg.Taproot != "" {
+		tapScriptRootHash, err = hex.DecodeString(cfg.Taproot)
+		if err != nil {
+			return err
+		}
+	}
 
 	// Random key.
 	var keyBytes []byte
