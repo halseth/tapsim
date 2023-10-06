@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -10,7 +11,7 @@ import (
 )
 
 type config struct {
-	Leaves string `short:"l" long:"leaves" description:"space separated string of hex values to commit to (must be power of 2)"`
+	Leaves string `short:"l" long:"leaves" description:"space separated string of hex values to commit to (must be power of 2). To group more values in single leaf, use (val1,val2)"`
 }
 
 var cfg = config{}
@@ -37,12 +38,41 @@ func run() error {
 			continue
 		}
 
-		h, err := hex.DecodeString(l)
-		if err != nil {
-			return fmt.Errorf("unable to parse '%s': %w", l, err)
+		var bs []byte
+
+		// Grouped leaves
+		if strings.HasPrefix(l, "(") &&
+			strings.HasSuffix(l, ")") {
+
+			l = strings.TrimPrefix(l, "(")
+			l = strings.TrimSuffix(l, ")")
+
+			els := strings.Split(l, ",")
+
+			group := bytes.Buffer{}
+			for _, el := range els {
+				h, err := hex.DecodeString(el)
+				if err != nil {
+					return fmt.Errorf("unable to parse '%s': %w", l, err)
+				}
+
+				hash := sha256.Sum256(h)
+				group.Write(hash[:])
+			}
+
+			bs = group.Bytes()
+		} else if l == "<>" {
+			bs = []byte{}
+		} else {
+			var err error
+			bs, err = hex.DecodeString(l)
+			if err != nil {
+				return fmt.Errorf("unable to parse '%s': %w", l, err)
+			}
+
 		}
 
-		hash := sha256.Sum256(h)
+		hash := sha256.Sum256(bs)
 		level = append(level, hash)
 	}
 
