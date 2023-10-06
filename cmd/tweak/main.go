@@ -76,6 +76,8 @@ func run() error {
 		}
 		pubKey := privKey.PubKey()
 		keyBytes = schnorr.SerializePubKey(pubKey)
+	} else if cfg.Key == "nums" {
+		keyBytes = txscript.BIP341_NUMS_POINT
 	} else {
 		var err error
 		keyBytes, err = hex.DecodeString(cfg.Key)
