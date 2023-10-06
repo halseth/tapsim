@@ -94,7 +94,7 @@ func run() error {
 	}
 
 	// Tweak pubkey with data.
-	tweaked := txscript.ComputeTaprootOutputKey(pubKey, merkleBytes[:])
+	tweaked := txscript.SingleTweakPubKey(pubKey, merkleBytes[:])
 	tweakedBytes := schnorr.SerializePubKey(tweaked)
 	fmt.Println("tweaked(merkle):", hex.EncodeToString(tweakedBytes))
 
@@ -103,7 +103,7 @@ func run() error {
 	fmt.Println("taproot output key(merkle+taproot):", hex.EncodeToString(tweakedBytes2))
 
 	empty := []byte{}
-	merkleOut := txscript.ComputeTaprootOutputKey(tweaked, empty)
+	merkleOut := txscript.SingleTweakPubKey(tweaked, empty)
 	merkleOutBytes := schnorr.SerializePubKey(merkleOut)
 	fmt.Println("taproot output key(merkle), no script:", hex.EncodeToString(merkleOutBytes))
 
