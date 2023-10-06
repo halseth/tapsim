@@ -40,8 +40,8 @@ github.com/google/go-cmp v0.3.1/go.mod h1:8QqcDgzrUqlUb/G2PQTWiueGozuR1884gddMyw
 github.com/google/go-cmp v0.4.0/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/halseth/btcd v0.0.0-20231004080001-8f9cf7eee018 h1:8r62AfA4FGcyQumwktgs0lJBlO5NcyTMcXRnlpD8b5g=
 github.com/halseth/btcd v0.0.0-20231004080001-8f9cf7eee018/go.mod h1:0QJIIN1wwIXF/3G/m87gIwGniDMDQqjVn4SZgnFpsYY=
-github.com/halseth/mattlab v0.0.0-20231005121049-edb410c084bd h1:Z3TbMqkVZWqJ9zlPKawUniqiue7OiPBAknYGnWYIJQU=
-github.com/halseth/mattlab v0.0.0-20231005121049-edb410c084bd/go.mod h1:W3HG6zmFogMeAaBUSB4l5sLa+prXjopKxhNqPscNM7s=
+github.com/halseth/mattlab v0.0.0-20231006112235-a4d3fca1d564 h1:iToLGHGb2YJkMQ9ofsnCFvqknnsOAaA8JG53V8KKRSA=
+github.com/halseth/mattlab v0.0.0-20231006112235-a4d3fca1d564/go.mod h1:W3HG6zmFogMeAaBUSB4l5sLa+prXjopKxhNqPscNM7s=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/jessevdk/go-flags v1.4.0 h1:4IU2WS7AumrZ/40jfhf4QVDMsQwqA7VEHozFRrGARJA=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
