@@ -8,7 +8,12 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 )
 
-var ColumnWidth = 40
+const remStr = "......."
+
+var (
+	ColumnWidth = 40
+	MaxRows     = 25
+)
 
 func StackToString(stack [][]byte) []string {
 	var str []string
@@ -74,6 +79,38 @@ func ExecutionTable(pc int, script, stack, altStack, witness []string,
 	)
 	s += strings.Repeat("-", fullWidth)
 	s += "\n"
+
+	// In case script is too long, trim it.
+	for len(script) > MaxRows {
+		if pc <= len(script)/2 {
+			if script[len(script)-1] == remStr {
+				script = script[:len(script)-1]
+			}
+			script[len(script)-1] = remStr
+		} else {
+			if script[0] == remStr {
+				script = script[1:]
+				pc--
+			}
+			script[0] = remStr
+		}
+	}
+
+	// We trim the stack as well, but only from the bottom.
+	trimStack := func(stack []string) []string {
+		for len(stack) > MaxRows {
+			if stack[len(stack)-1] == remStr {
+				stack = stack[:len(stack)-1]
+			}
+			stack[len(stack)-1] = remStr
+		}
+
+		return stack
+	}
+
+	witness = trimStack(witness)
+	stack = trimStack(stack)
+	altStack = trimStack(altStack)
 
 	row := 0
 	for {

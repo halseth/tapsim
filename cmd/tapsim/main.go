@@ -90,7 +90,11 @@ func main() {
 				},
 				&cli.IntFlag{
 					Name:  "colwidth",
-					Usage: "output column witdth (default: 40)",
+					Usage: "output column width (default: 40)",
+				},
+				&cli.IntFlag{
+					Name:  "rows",
+					Usage: "max rows to print in execution table (default: 25)",
 				},
 			},
 		},
@@ -124,6 +128,10 @@ func execute(cCtx *cli.Context) error {
 	colWidth := cCtx.Int("colwidth")
 	if colWidth > 0 {
 		output.ColumnWidth = colWidth
+	}
+	maxRows := cCtx.Int("rows")
+	if maxRows > 0 {
+		output.MaxRows = maxRows
 	}
 
 	var scriptStr []string
