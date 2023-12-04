@@ -167,7 +167,6 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 	combinedWitness = append(combinedWitness, pkScripts[scriptIndex], ctrlBlockBytes)
 
 	txCopy := tx.Copy()
-	txCopy.TxIn[0].Witness = wire.TxWitness{}
 	txCopy.TxIn[0].Witness = combinedWitness
 
 	setupFunc := func(cb func(*txscript.StepInfo) error) (*txscript.Engine, error) {
