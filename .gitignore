@@ -2,4 +2,13 @@
 
 # Binaries
 /cmd/tapsim/tapsim
+/cmd/keys/keys
+/cmd/tweak/tweak
+/cmd/merkle/merkle
+/keys
+/merkle
+/tweak
 /tapsim
+cmd/scriptnum/scriptnum
+examples/matt/coinpool/v2/cmd/cmd
+scriptnum

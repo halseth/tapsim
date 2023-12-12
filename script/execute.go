@@ -28,7 +28,8 @@ const scriptFlags = txscript.StandardVerifyFlags
 // If [input/output]KeyBytes is empty, a random key will be generated.
 func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 	outputs []TxOutput, pkScripts [][]byte, scriptIndex int,
-	witnessGen []WitnessGen, interactive bool, tags map[string]string) error {
+	witnessGen []WitnessGen, interactive, noStep bool, tags map[string]string,
+	skipAhead int) error {
 
 	// Parse the input private keys.
 	privKeys := make(map[string]*btcec.PrivateKey)
@@ -167,7 +168,6 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 	combinedWitness = append(combinedWitness, pkScripts[scriptIndex], ctrlBlockBytes)
 
 	txCopy := tx.Copy()
-	txCopy.TxIn[0].Witness = wire.TxWitness{}
 	txCopy.TxIn[0].Witness = combinedWitness
 
 	setupFunc := func(cb func(*txscript.StepInfo) error) (*txscript.Engine, error) {
@@ -196,12 +196,24 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 	currentStep := 1
 	prevLines := 0
 	bytes := make([]byte, 3)
+
+	// We'll start script execution and control the stepping by signalling
+	// on a channel.
+	stepChan := make(chan error, 1)
+	tableChan, errChan := StepScript(
+		setupFunc, stepChan, txCopy.TxIn[0].Witness, tags, currentStep,
+	)
+
 	for {
-		// Based on the current step counter, we execute up until that
-		// step, then print the state table.
-		table, vmErr := StepScript(
-			setupFunc, txCopy.TxIn[0].Witness, tags, currentStep,
-		)
+		// Always start by signalling a step.
+		stepChan <- nil
+
+		var table string
+		var vmErr error
+		select {
+		case vmErr = <-errChan:
+		case table = <-tableChan:
+		}
 
 		// Before handling any error, we draw the state table for the
 		// step.
@@ -210,7 +222,9 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 			clearLines = prevLines
 		}
 
-		output.DrawTable(table, clearLines)
+		if !noStep {
+			output.DrawTable(table, clearLines)
+		}
 		if interactive {
 			if currentStep > 1 {
 				fmt.Printf("Script execution: \u2190 back | next \u2192 ")
@@ -226,14 +240,14 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 
 		// If the VM encountered no error, it means the script
 		// successfully executed to completion.
-		if vmErr == nil {
+		if table == "" && vmErr == nil {
 			output.ClearLines(1)
 			return nil
 		}
 
 		// If we encountered an error other than errAbortVM,
 		// the script actually failed.
-		if vmErr != errAbortVM {
+		if table == "" && vmErr != errAbortVM {
 			output.ClearLines(1)
 			return vmErr
 		}
@@ -241,7 +255,8 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 		// Otherwise script execution was aborted before it completed,
 		// so we continue with the next step of the execution.
 
-		if interactive {
+		if interactive && currentStep >= skipAhead {
+			skipAhead = 0
 			numRead, err := t.Read(bytes)
 			if err != nil {
 				return err
@@ -262,6 +277,17 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 					if currentStep < 1 {
 						currentStep = 1
 					}
+
+					// We are stepping backwards. Since we
+					// have not really optimized for this
+					// direction, we'll just start a new VM
+					// and have it execute up until the
+					// current step.
+					tableChan, errChan = StepScript(
+						setupFunc, stepChan,
+						txCopy.TxIn[0].Witness, tags,
+						currentStep,
+					)
 				}
 
 			} else if numRead == 1 && bytes[0] == 3 {
@@ -277,8 +303,9 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 
 var errAbortVM = fmt.Errorf("aborting vm execution")
 
-func StepScript(setupFunc func(func(*txscript.StepInfo) error) (*txscript.Engine, error), witness [][]byte,
-	tags map[string]string, numSteps int) (string, error) {
+func StepScript(setupFunc func(func(*txscript.StepInfo) error) (*txscript.Engine, error),
+	stepChan <-chan error, witness [][]byte,
+	tags map[string]string, numSteps int) (<-chan string, <-chan error) {
 
 	var (
 		vm  *txscript.Engine
@@ -290,6 +317,11 @@ func StepScript(setupFunc func(func(*txscript.StepInfo) error) (*txscript.Engine
 		SCRIPT_SCRIPTPUBKEY   = 1
 		SCRIPT_WITNESS_SCRIPT = 2
 	)
+
+	// We'll send outut for each step, or if we encounter an error, on
+	// these channels.
+	outputChan := make(chan string)
+	errChan := make(chan error, 1)
 
 	// Set up a callback that we will use to inspect the engine state at
 	// every execution step.
@@ -332,6 +364,12 @@ func StepScript(setupFunc func(func(*txscript.StepInfo) error) (*txscript.Engine
 		stepCounter++
 		currentScript = step.ScriptIndex
 
+		// If we haven't reached the number of steps to execute, we'll
+		// return here to allow the VM to continue execution.
+		if stepCounter < numSteps {
+			return nil
+		}
+
 		// Parse the current script for output.
 		scriptStr := output.VmScriptToString(vm, step.ScriptIndex)
 		table := output.ExecutionTable(
@@ -346,10 +384,14 @@ func StepScript(setupFunc func(func(*txscript.StepInfo) error) (*txscript.Engine
 		finalState += table
 		finalState += "\n"
 
-		// If we have executed enough steps, signal the VM to abort
-		// using our custom error.
-		if stepCounter >= numSteps {
-			return errAbortVM
+		// Now that we have executed enough steps, send the resulting
+		// output over the channel
+		outputChan <- finalState
+
+		// Now wait for a signal to either continue execution or exit.
+		stepErr := <-stepChan
+		if stepErr != nil {
+			return stepErr
 		}
 
 		return nil
@@ -357,9 +399,16 @@ func StepScript(setupFunc func(func(*txscript.StepInfo) error) (*txscript.Engine
 
 	vm, err = setupFunc(stepCallback)
 	if err != nil {
-		return "", err
+		errChan <- err
+		return outputChan, errChan
 	}
 
-	vmErr := vm.Execute()
-	return finalState, vmErr
+	// We wont' block on execution, but start the VM in a goroutine, such
+	// that the caller can step through it.
+	go func() {
+		vmErr := vm.Execute()
+		errChan <- vmErr
+	}()
+
+	return outputChan, errChan
 }

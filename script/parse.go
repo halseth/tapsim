@@ -13,6 +13,11 @@ func Parse(script string) ([]byte, error) {
 
 	builder := txscript.NewScriptBuilder()
 	for _, o := range c {
+		// Trim any leftover whitespace.
+		o := strings.TrimSpace(o)
+		if o == "" {
+			continue
+		}
 
 		// If valid opcode, simply push it to the script.
 		if op, ok := txscript.OpcodeByName[o]; ok {
@@ -20,10 +25,16 @@ func Parse(script string) ([]byte, error) {
 			continue
 		}
 
+		// Empty element.
+		if o == "<>" {
+			builder.AddData([]byte{})
+			continue
+		}
+
 		// Otherwise, try to interpret it as data.
 		data, err := hex.DecodeString(o)
 		if err != nil {
-			return nil, fmt.Errorf("parsing %s: %w", o, err)
+			return nil, fmt.Errorf("parsing '%s': %w", o, err)
 		}
 
 		builder.AddData(data)

@@ -8,6 +8,13 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 )
 
+const remStr = "......."
+
+var (
+	ColumnWidth = 40
+	MaxRows     = 25
+)
+
 func StackToString(stack [][]byte) []string {
 	var str []string
 	for i := len(stack) - 1; i >= 0; i-- {
@@ -58,22 +65,52 @@ func WitnessToString(witness [][]byte) []string {
 	return str
 }
 
-const columnWidth = 40
-
 func ExecutionTable(pc int, script, stack, altStack, witness []string,
 	tags map[string]string) string {
 
-	fullWidth := 4 * (columnWidth + 2)
+	fullWidth := 4 * (ColumnWidth + 2)
 	s := strings.Repeat("-", fullWidth)
 	s += "\n"
 	s += fmt.Sprintf(" %s| %s| %s| %s\n",
-		FixedWidth(columnWidth, "script", tags),
-		FixedWidth(columnWidth, "stack", tags),
-		FixedWidth(columnWidth, "alt stack", tags),
-		FixedWidth(columnWidth, "witness", tags),
+		FixedWidth(ColumnWidth, "script", tags),
+		FixedWidth(ColumnWidth, "stack", tags),
+		FixedWidth(ColumnWidth, "alt stack", tags),
+		FixedWidth(ColumnWidth, "witness", tags),
 	)
 	s += strings.Repeat("-", fullWidth)
 	s += "\n"
+
+	// In case script is too long, trim it.
+	for len(script) > MaxRows {
+		if pc <= len(script)/2 {
+			if script[len(script)-1] == remStr {
+				script = script[:len(script)-1]
+			}
+			script[len(script)-1] = remStr
+		} else {
+			if script[0] == remStr {
+				script = script[1:]
+				pc--
+			}
+			script[0] = remStr
+		}
+	}
+
+	// We trim the stack as well, but only from the bottom.
+	trimStack := func(stack []string) []string {
+		for len(stack) > MaxRows {
+			if stack[len(stack)-1] == remStr {
+				stack = stack[:len(stack)-1]
+			}
+			stack[len(stack)-1] = remStr
+		}
+
+		return stack
+	}
+
+	witness = trimStack(witness)
+	stack = trimStack(stack)
+	altStack = trimStack(altStack)
 
 	row := 0
 	for {
@@ -105,10 +142,10 @@ func ExecutionTable(pc int, script, stack, altStack, witness []string,
 
 		s += fmt.Sprintf("%s%s| %s| %s| %s\n",
 			pcC,
-			FixedWidth(columnWidth, scr, tags),
-			FixedWidth(columnWidth, stk, tags),
-			FixedWidth(columnWidth, alt, tags),
-			FixedWidth(columnWidth, wit, tags),
+			FixedWidth(ColumnWidth, scr, tags),
+			FixedWidth(ColumnWidth, stk, tags),
+			FixedWidth(ColumnWidth, alt, tags),
+			FixedWidth(ColumnWidth, wit, tags),
 		)
 
 		if scr == "" && stk == "" && alt == "" && wit == "" {
@@ -118,7 +155,7 @@ func ExecutionTable(pc int, script, stack, altStack, witness []string,
 		row++
 	}
 
-	s += strings.Repeat("-", 4*(columnWidth+2))
+	s += strings.Repeat("-", 4*(ColumnWidth+2))
 	s += "\n"
 
 	return s

@@ -10,6 +10,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/halseth/tapsim/file"
+	"github.com/halseth/tapsim/output"
 	"github.com/halseth/tapsim/script"
 	"github.com/urfave/cli/v2"
 )
@@ -65,6 +66,12 @@ func main() {
 					Aliases: []string{"ni"},
 					Usage:   "disable interactive mode",
 				},
+				&cli.BoolFlag{
+					Name:    "no-step",
+					Aliases: []string{"ns"},
+					Usage:   "don't show step by step, just validate",
+				},
+
 				&cli.StringFlag{
 					Name:  "privkeys",
 					Usage: "specify private keys as \"key1:<hex>,key2:<hex>\" to sign the transaction. Set <hex> empty to generate a random key with the given ID.",
@@ -86,6 +93,18 @@ func main() {
 				&cli.StringFlag{
 					Name:  "tagfile",
 					Usage: "optional json file map from hex values to human-readable tags",
+				},
+				&cli.IntFlag{
+					Name:  "colwidth",
+					Usage: "output column width (default: 40)",
+				},
+				&cli.IntFlag{
+					Name:  "rows",
+					Usage: "max rows to print in execution table (default: 25)",
+				},
+				&cli.IntFlag{
+					Name:  "skip",
+					Usage: "skip aheead",
 				},
 			},
 		},
@@ -115,6 +134,18 @@ func parse(cCtx *cli.Context) error {
 }
 
 func execute(cCtx *cli.Context) error {
+
+	colWidth := cCtx.Int("colwidth")
+	if colWidth > 0 {
+		output.ColumnWidth = colWidth
+	}
+	maxRows := cCtx.Int("rows")
+	if maxRows > 0 {
+		output.MaxRows = maxRows
+	}
+
+	skipAhead := cCtx.Int("skip")
+
 	var scriptStr []string
 	scriptFile := cCtx.String("script")
 	scriptFiles := cCtx.String("scripts")
@@ -178,6 +209,7 @@ func execute(cCtx *cli.Context) error {
 	}
 
 	nonInteractive := cCtx.Bool("non-interactive")
+	noStep := cCtx.Bool("no-step")
 	privKeys := strings.Split(cCtx.String("privkeys"), ",")
 	keyMap := make(map[string][]byte)
 	for _, privKeyStr := range privKeys {
@@ -273,13 +305,13 @@ func execute(cCtx *cli.Context) error {
 
 	executeErr := script.Execute(
 		keyMap, inputKeyBytes, txOutKeys, parsedScripts, scriptIndex,
-		parsedWitness, !nonInteractive, tags,
+		parsedWitness, !nonInteractive, noStep, tags, skipAhead,
 	)
 	if executeErr != nil {
 		fmt.Printf("script exection failed: %s\r\n", executeErr)
-		return nil
+		return executeErr
 	}
 
-	fmt.Printf("script verified\r\n")
+	fmt.Printf("script execution verified\r\n")
 	return nil
 }

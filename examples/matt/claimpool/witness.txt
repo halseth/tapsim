@@ -1,0 +1,15 @@
+f20821527d9281cb0b68dba296d6e9aea6c668da287780e79e0afcfd28885384 # left node
+01 # right node
+18ca93eb7f7322a2faf5823e99b046fb309190b06133a0d132f90dcab0d21e66 # left node
+01 # right node
+04 # value 2
+fc # preimage 2
+770015cb0b4e365fdb6a483bce159cc5478f959bf448b150c958f98d8ee1a91d # right node
+<> # left node
+306c8e9cd92b200ead0264ab4621cd2e673cb6a7956b98dce3faee6eaa3ff4fa # left node
+01 # right node
+02 # value 1
+fe # preimage 1
+08dd31f3b8cc620092deabcb68013029e9fbb3255ad5f3f207f3aba026a55b40 # input inner internal key
+938ab873e81cb8d137a1773b60ad410938075440c3485b05cd152d4b856ad17f # original merkle commitment
+fb30f5ea4cc43f6ae168a1a37e3b6b96f347f04b94e2b240480130c8fb0294ae # taptree
