@@ -28,7 +28,8 @@ const scriptFlags = txscript.StandardVerifyFlags
 // If [input/output]KeyBytes is empty, a random key will be generated.
 func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 	outputs []TxOutput, pkScripts [][]byte, scriptIndex int,
-	witnessGen []WitnessGen, interactive bool, tags map[string]string) error {
+	witnessGen []WitnessGen, interactive, noStep bool, tags map[string]string,
+	skipAhead int) error {
 
 	// Parse the input private keys.
 	privKeys := make(map[string]*btcec.PrivateKey)
@@ -221,7 +222,9 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 			clearLines = prevLines
 		}
 
-		output.DrawTable(table, clearLines)
+		if !noStep {
+			output.DrawTable(table, clearLines)
+		}
 		if interactive {
 			if currentStep > 1 {
 				fmt.Printf("Script execution: \u2190 back | next \u2192 ")
@@ -252,7 +255,8 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 		// Otherwise script execution was aborted before it completed,
 		// so we continue with the next step of the execution.
 
-		if interactive {
+		if interactive && currentStep >= skipAhead {
+			skipAhead = 0
 			numRead, err := t.Read(bytes)
 			if err != nil {
 				return err

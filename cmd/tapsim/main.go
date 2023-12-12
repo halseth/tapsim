@@ -66,6 +66,12 @@ func main() {
 					Aliases: []string{"ni"},
 					Usage:   "disable interactive mode",
 				},
+				&cli.BoolFlag{
+					Name:    "no-step",
+					Aliases: []string{"ns"},
+					Usage:   "don't show step by step, just validate",
+				},
+
 				&cli.StringFlag{
 					Name:  "privkeys",
 					Usage: "specify private keys as \"key1:<hex>,key2:<hex>\" to sign the transaction. Set <hex> empty to generate a random key with the given ID.",
@@ -95,6 +101,10 @@ func main() {
 				&cli.IntFlag{
 					Name:  "rows",
 					Usage: "max rows to print in execution table (default: 25)",
+				},
+				&cli.IntFlag{
+					Name:  "skip",
+					Usage: "skip aheead",
 				},
 			},
 		},
@@ -133,6 +143,8 @@ func execute(cCtx *cli.Context) error {
 	if maxRows > 0 {
 		output.MaxRows = maxRows
 	}
+
+	skipAhead := cCtx.Int("skip")
 
 	var scriptStr []string
 	scriptFile := cCtx.String("script")
@@ -197,6 +209,7 @@ func execute(cCtx *cli.Context) error {
 	}
 
 	nonInteractive := cCtx.Bool("non-interactive")
+	noStep := cCtx.Bool("no-step")
 	privKeys := strings.Split(cCtx.String("privkeys"), ",")
 	keyMap := make(map[string][]byte)
 	for _, privKeyStr := range privKeys {
@@ -292,7 +305,7 @@ func execute(cCtx *cli.Context) error {
 
 	executeErr := script.Execute(
 		keyMap, inputKeyBytes, txOutKeys, parsedScripts, scriptIndex,
-		parsedWitness, !nonInteractive, tags,
+		parsedWitness, !nonInteractive, noStep, tags, skipAhead,
 	)
 	if executeErr != nil {
 		fmt.Printf("script exection failed: %s\r\n", executeErr)
