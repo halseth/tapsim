@@ -309,9 +309,9 @@ func execute(cCtx *cli.Context) error {
 	)
 	if executeErr != nil {
 		fmt.Printf("script exection failed: %s\r\n", executeErr)
-		return nil
+		return executeErr
 	}
 
-	fmt.Printf("script verified\r\n")
+	fmt.Printf("script execution verified\r\n")
 	return nil
 }
