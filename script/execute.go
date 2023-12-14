@@ -356,7 +356,7 @@ func StepScript(setupFunc func(func(*txscript.StepInfo) error) (*txscript.Engine
 
 		// Execution of the witness script is the interesting part.
 		case SCRIPT_WITNESS_SCRIPT:
-			if currentScript != step.ScriptIndex {
+			if currentScript <= step.ScriptIndex {
 				finalState += "witness program verified OK\n"
 			}
 		}
