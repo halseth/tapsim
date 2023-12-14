@@ -28,6 +28,14 @@ cd tapsim
 go build ./cmd/tapsim
 ```
 
+### Tools
+Also found in the `cmd` folder are a few tools useful for certain script
+releated tasks:
+- `keys`: generates random key pairs
+- `merkle`: builds merkle trees
+- `scriptnum`: convert to and from the Bitcoin CScriptNum format
+- `tweak`: tweak public keys with data and taproot
+
 ## Usage
 ```bash
 $ ./tapsim -h
@@ -61,8 +69,41 @@ Witness: 54
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
-script verified
+script execution verified
 ```
+
+## Options
+```bash
+$ ./tapsim execute -h
+NAME:
+   tapsim execute
+
+USAGE:
+   tapsim execute [command options] [arguments...]
+
+OPTIONS:
+   --script value           filename or output script as string
+   --scripts value          list of filenames with output scripts to assemble into a taptree
+   --scriptindex value      index of script from "scripts" to execute (default: 0)
+   --witness value          filename or witness stack as string
+   --non-interactive, --ni  disable interactive mode (default: false)
+   --no-step, --ns          don't show step by step, just validate (default: false)
+   --privkeys value         specify private keys as "key1:<hex>,key2:<hex>" to sign the transaction. Set <hex> empty to generate a random key with the given ID.
+   --inputkey value         use specified internal key for the input
+   --outputkey value        use specified internal key for the output
+   --outputs value          specify taproot outputs as "<pubkey>:<value>"
+   --tagfile value          optional json file map from hex values to human-readable tags
+   --colwidth value         output column width (default: 40)
+   --rows value             max rows to print in execution table (default: 25)
+   --skip value             skip aheead (default: 0)
+   --help, -h               show help (default: false)
+```
+
+## Additional script features
+In addition to the regular Bitcoin tapscript opcodes, tapsim has added support
+for scripts using
+- OP_CAT
+- OP_CHECKCONTRACTVERIFY
 
 ## Contributing
 Contributions to Tapsim are welcomed. Please open a pull request or issue.
