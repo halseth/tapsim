@@ -96,15 +96,17 @@ func main() {
 				},
 				&cli.IntFlag{
 					Name:  "colwidth",
-					Usage: "output column width (default: 40)",
+					Usage: "output column width",
+					Value: output.ColumnWidth,
 				},
 				&cli.IntFlag{
 					Name:  "rows",
-					Usage: "max rows to print in execution table (default: 25)",
+					Usage: "max rows to print in execution table",
+					Value: output.MaxRows,
 				},
 				&cli.IntFlag{
 					Name:  "skip",
-					Usage: "skip aheead",
+					Usage: "skip ahead",
 				},
 			},
 		},
