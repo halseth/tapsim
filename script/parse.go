@@ -1,6 +1,7 @@
 package script
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -11,7 +12,14 @@ import (
 func Parse(script string) ([]byte, error) {
 	c := strings.Split(script, " ")
 
-	builder := txscript.NewScriptBuilder()
+	var (
+		// We'll not use the script builder for the actual script, as
+		// it will automatically change data pushes to be minimal
+		// (which we don't always want). We use it to sanity check the
+		// parsed script
+		parsed  []byte
+		builder = txscript.NewScriptBuilder()
+	)
 	for _, o := range c {
 		// Trim any leftover whitespace.
 		o := strings.TrimSpace(o)
@@ -22,12 +30,14 @@ func Parse(script string) ([]byte, error) {
 		// If valid opcode, simply push it to the script.
 		if op, ok := txscript.OpcodeByName[o]; ok {
 			builder.AddOp(op)
+			parsed = append(parsed, op)
 			continue
 		}
 
 		// Empty element.
 		if o == "<>" {
 			builder.AddData([]byte{})
+			parsed = append(parsed, txscript.OP_0)
 			continue
 		}
 
@@ -37,10 +47,30 @@ func Parse(script string) ([]byte, error) {
 			return nil, fmt.Errorf("parsing '%s': %w", o, err)
 		}
 
+		dataLen := len(data)
+		if dataLen < txscript.OP_PUSHDATA1 {
+			parsed = append(parsed, byte((txscript.OP_DATA_1-1)+dataLen))
+		} else if dataLen <= 0xff {
+			parsed = append(parsed, txscript.OP_PUSHDATA1, byte(dataLen))
+		} else if dataLen <= 0xffff {
+			buf := make([]byte, 2)
+			binary.LittleEndian.PutUint16(buf, uint16(dataLen))
+			parsed = append(parsed, txscript.OP_PUSHDATA2)
+			parsed = append(parsed, buf...)
+		} else {
+			buf := make([]byte, 4)
+			binary.LittleEndian.PutUint32(buf, uint32(dataLen))
+			parsed = append(parsed, txscript.OP_PUSHDATA4)
+			parsed = append(parsed, buf...)
+		}
+
+		// Append the actual data.
+		parsed = append(parsed, data...)
 		builder.AddData(data)
 	}
 
-	return builder.Script()
+	_, err := builder.Script()
+	return parsed, err
 }
 
 // SignFunc should return a signature for the current input given the private
