@@ -108,11 +108,19 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 	fmt.Printf("input internal key: %x\n", schnorr.SerializePubKey(inputKey))
 	fmt.Printf("input taproot key: %x\n", schnorr.SerializePubKey(inputTapKey))
 
+	prevOut := &wire.TxOut{
+		Value:    1e8,
+		PkScript: inputScript,
+	}
+
+	op := wire.OutPoint{
+		Index: 0,
+	}
+	prevOuts := []*wire.TxOut{prevOut}
+
 	tx := wire.NewMsgTx(2)
 	tx.AddTxIn(&wire.TxIn{
-		PreviousOutPoint: wire.OutPoint{
-			Index: 0,
-		},
+		PreviousOutPoint: op,
 	})
 
 	for i, o := range outputs {
@@ -130,10 +138,6 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 		})
 	}
 
-	prevOut := &wire.TxOut{
-		Value:    1e8,
-		PkScript: inputScript,
-	}
 	prevOutFetcher := txscript.NewCannedPrevOutputFetcher(
 		prevOut.PkScript, prevOut.Value,
 	)
@@ -170,16 +174,31 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 	txCopy := tx.Copy()
 	txCopy.TxIn[0].Witness = combinedWitness
 
+	return ExecuteTx(txCopy, prevOuts, 0, interactive, noStep, tags, skipAhead)
+}
+
+func ExecuteTx(tx *wire.MsgTx, prevOuts []*wire.TxOut, txIdx int,
+	interactive, noStep bool, tags map[string]string, skipAhead int) error {
+
+	prevMap := make(map[wire.OutPoint]*wire.TxOut)
+	for i, in := range tx.TxIn {
+		prevMap[in.PreviousOutPoint] = prevOuts[i]
+	}
+
+	prevOutFetcher := txscript.NewMultiPrevOutFetcher(prevMap)
+	currentInput := prevOuts[txIdx]
+
 	setupFunc := func(cb func(*txscript.StepInfo) error) (*txscript.Engine, error) {
 		sigHashes := txscript.NewTxSigHashes(tx, prevOutFetcher)
 		return txscript.NewDebugEngine(
-			prevOut.PkScript, txCopy, 0, scriptFlags,
-			nil, sigHashes, prevOut.Value, prevOutFetcher,
+			currentInput.PkScript, tx, txIdx, scriptFlags,
+			nil, sigHashes, currentInput.Value, prevOutFetcher,
 			cb,
 		)
 	}
 
 	var t *term.Term
+	var err error
 	if interactive {
 		// Set the terminal in raw mode, such that we can capture arrow
 		// presses.
@@ -201,7 +220,7 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 	// on a channel.
 	stepChan := make(chan error, 1)
 	tableChan, errChan := StepScript(
-		setupFunc, stepChan, txCopy.TxIn[0].Witness, tags, currentStep,
+		setupFunc, stepChan, tx.TxIn[txIdx].Witness, tags, currentStep,
 	)
 
 	for {
@@ -285,7 +304,7 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 					// current step.
 					tableChan, errChan = StepScript(
 						setupFunc, stepChan,
-						txCopy.TxIn[0].Witness, tags,
+						tx.TxIn[txIdx].Witness, tags,
 						currentStep,
 					)
 				}
