@@ -28,8 +28,7 @@ const scriptFlags = txscript.StandardVerifyFlags
 // If [input/output]KeyBytes is empty, a random key will be generated.
 func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 	outputs []TxOutput, pkScripts [][]byte, scriptIndex int,
-	witnessGen []WitnessGen, interactive, noStep bool, tags map[string]string,
-	skipAhead int) error {
+	witnessGen []WitnessGen, interactive, noStep bool, tags map[string]string, skipAhead int) error {
 
 	// Parse the input private keys.
 	privKeys := make(map[string]*btcec.PrivateKey)
@@ -108,11 +107,21 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 	fmt.Printf("input internal key: %x\n", schnorr.SerializePubKey(inputKey))
 	fmt.Printf("input taproot key: %x\n", schnorr.SerializePubKey(inputTapKey))
 
+	prevOut := &wire.TxOut{
+		Value:    1e8,
+		PkScript: inputScript,
+	}
+
+	op := wire.OutPoint{
+		Index: 0,
+	}
+	prevOuts := map[wire.OutPoint]*wire.TxOut{
+		op: prevOut,
+	}
+
 	tx := wire.NewMsgTx(2)
 	tx.AddTxIn(&wire.TxIn{
-		PreviousOutPoint: wire.OutPoint{
-			Index: 0,
-		},
+		PreviousOutPoint: op,
 	})
 
 	for i, o := range outputs {
@@ -130,10 +139,6 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 		})
 	}
 
-	prevOut := &wire.TxOut{
-		Value:    1e8,
-		PkScript: inputScript,
-	}
 	prevOutFetcher := txscript.NewCannedPrevOutputFetcher(
 		prevOut.PkScript, prevOut.Value,
 	)
@@ -170,16 +175,26 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 	txCopy := tx.Copy()
 	txCopy.TxIn[0].Witness = combinedWitness
 
+	return ExecuteTx(txCopy, prevOut, prevOuts, interactive, noStep, tags, skipAhead)
+}
+
+func ExecuteTx(tx *wire.MsgTx, currentInput *wire.TxOut,
+	prevOuts map[wire.OutPoint]*wire.TxOut,
+	interactive, noStep bool, tags map[string]string, skipAhead int) error {
+
+	prevOutFetcher := txscript.NewMultiPrevOutFetcher(prevOuts)
+
 	setupFunc := func(cb func(*txscript.StepInfo) error) (*txscript.Engine, error) {
 		sigHashes := txscript.NewTxSigHashes(tx, prevOutFetcher)
 		return txscript.NewDebugEngine(
-			prevOut.PkScript, txCopy, 0, scriptFlags,
-			nil, sigHashes, prevOut.Value, prevOutFetcher,
+			currentInput.PkScript, tx, 0, scriptFlags,
+			nil, sigHashes, currentInput.Value, prevOutFetcher,
 			cb,
 		)
 	}
 
 	var t *term.Term
+	var err error
 	if interactive {
 		// Set the terminal in raw mode, such that we can capture arrow
 		// presses.
@@ -201,7 +216,7 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 	// on a channel.
 	stepChan := make(chan error, 1)
 	tableChan, errChan := StepScript(
-		setupFunc, stepChan, txCopy.TxIn[0].Witness, tags, currentStep,
+		setupFunc, stepChan, tx.TxIn[0].Witness, tags, currentStep,
 	)
 
 	for {
@@ -285,7 +300,7 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 					// current step.
 					tableChan, errChan = StepScript(
 						setupFunc, stepChan,
-						txCopy.TxIn[0].Witness, tags,
+						tx.TxIn[0].Witness, tags,
 						currentStep,
 					)
 				}
