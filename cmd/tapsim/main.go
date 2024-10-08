@@ -148,6 +148,64 @@ func execute(cCtx *cli.Context) error {
 
 	skipAhead := cCtx.Int("skip")
 
+	outputKeyStr := cCtx.String("outputkey")
+	outputsStr := cCtx.String("outputs")
+
+	if len(outputKeyStr) > 0 && len(outputsStr) > 0 {
+		return fmt.Errorf("cannot set both outputkey and outputs")
+	}
+
+	if len(outputKeyStr) > 0 {
+		outputsStr = fmt.Sprintf("%s:100000000", outputKeyStr)
+	}
+
+	outputs := strings.Split(outputsStr, ",")
+	var txOutKeys []script.TxOutput
+	for _, oStr := range outputs {
+		if oStr == "" {
+			continue
+		}
+
+		k := strings.Split(oStr, ":")
+		pubKeyBytes, err := hex.DecodeString(k[0])
+		if err != nil {
+			return err
+		}
+
+		pubKey, err := schnorr.ParsePubKey(pubKeyBytes)
+		if err != nil {
+			return err
+		}
+
+		val, err := strconv.ParseInt(k[1], 10, 0)
+		if err != nil {
+			return err
+		}
+
+		txOutKeys = append(txOutKeys, script.TxOutput{
+			OutputKey: pubKey,
+			Value:     val,
+		})
+	}
+
+	tagFile := cCtx.String("tagfile")
+	var tags map[string]string
+	if tagFile != "" {
+		tagBytes, err := file.Read(tagFile)
+		if err != nil {
+			return err
+		}
+
+		tags, err = file.ParseTagMap(tagBytes)
+		if err != nil {
+			return err
+		}
+	}
+
+	nonInteractive := cCtx.Bool("non-interactive")
+	noStep := cCtx.Bool("no-step")
+
+	inputKeyStr := cCtx.String("inputkey")
 	var scriptStr []string
 	scriptFile := cCtx.String("script")
 	scriptFiles := cCtx.String("scripts")
@@ -155,6 +213,8 @@ func execute(cCtx *cli.Context) error {
 	if scriptFile != "" && scriptFiles != "" {
 		return fmt.Errorf("both script and scripts cannot be set")
 	}
+
+	scriptIndex := cCtx.Int("scriptindex")
 
 	if scriptFile != "" {
 		// Attempt to read the script from file.
@@ -210,8 +270,6 @@ func execute(cCtx *cli.Context) error {
 		witnessStr = witnessFile
 	}
 
-	nonInteractive := cCtx.Bool("non-interactive")
-	noStep := cCtx.Bool("no-step")
 	privKeys := strings.Split(cCtx.String("privkeys"), ",")
 	keyMap := make(map[string][]byte)
 	for _, privKeyStr := range privKeys {
@@ -227,66 +285,6 @@ func execute(cCtx *cli.Context) error {
 		keyMap[k[0]] = privKeyBytes
 	}
 
-	inputKeyStr := cCtx.String("inputkey")
-	inputKeyBytes, err := hex.DecodeString(inputKeyStr)
-	if err != nil {
-		return err
-	}
-	outputKeyStr := cCtx.String("outputkey")
-	outputsStr := cCtx.String("outputs")
-
-	if len(outputKeyStr) > 0 && len(outputsStr) > 0 {
-		return fmt.Errorf("cannot set both outputkey and outputs")
-	}
-
-	if len(outputKeyStr) > 0 {
-		outputsStr = fmt.Sprintf("%s:100000000", outputKeyStr)
-	}
-
-	outputs := strings.Split(outputsStr, ",")
-	var txOutKeys []script.TxOutput
-	for _, oStr := range outputs {
-		if oStr == "" {
-			continue
-		}
-
-		k := strings.Split(oStr, ":")
-		pubKeyBytes, err := hex.DecodeString(k[0])
-		if err != nil {
-			return err
-		}
-
-		pubKey, err := schnorr.ParsePubKey(pubKeyBytes)
-		if err != nil {
-			return err
-		}
-
-		val, err := strconv.ParseInt(k[1], 10, 0)
-		if err != nil {
-			return err
-		}
-
-		txOutKeys = append(txOutKeys, script.TxOutput{
-			OutputKey: pubKey,
-			Value:     val,
-		})
-	}
-
-	tagFile := cCtx.String("tagfile")
-	var tags map[string]string
-	if tagFile != "" {
-		tagBytes, err := file.Read(tagFile)
-		if err != nil {
-			return err
-		}
-
-		tags, err = file.ParseTagMap(tagBytes)
-		if err != nil {
-			return err
-		}
-	}
-
-	scriptIndex := cCtx.Int("scriptindex")
 	fmt.Printf("Script: %s\r\n", scriptStr[scriptIndex])
 	fmt.Printf("Witness: %s\r\n", witnessStr)
 
