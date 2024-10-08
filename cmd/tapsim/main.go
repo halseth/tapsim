@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/btcsuite/btcd/wire"
 	"github.com/halseth/tapsim/file"
 	"github.com/halseth/tapsim/output"
 	"github.com/halseth/tapsim/script"
@@ -90,6 +92,56 @@ func main() {
 					Usage: "specify taproot outputs as \"<pubkey>:<value>\"",
 				},
 
+				&cli.StringFlag{
+					Name:  "tagfile",
+					Usage: "optional json file map from hex values to human-readable tags",
+				},
+				&cli.IntFlag{
+					Name:  "colwidth",
+					Usage: "output column width",
+					Value: output.ColumnWidth,
+				},
+				&cli.IntFlag{
+					Name:  "rows",
+					Usage: "max rows to print in execution table",
+					Value: output.MaxRows,
+				},
+				&cli.IntFlag{
+					Name:  "skip",
+					Usage: "skip ahead",
+				},
+			},
+		},
+		{
+			Name:        "validate",
+			Usage:       "",
+			UsageText:   "",
+			Description: "",
+			ArgsUsage:   "",
+			Action:      validate,
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:  "tx",
+					Usage: "serialized transaction in hex",
+				},
+				&cli.StringFlag{
+					Name:  "prevouts",
+					Usage: "list of prevouts as serialized txouts in hex",
+				},
+				&cli.IntFlag{
+					Name:  "inputindex",
+					Usage: "index of input from the \"tx\" to execute",
+				},
+				&cli.BoolFlag{
+					Name:    "non-interactive",
+					Aliases: []string{"ni"},
+					Usage:   "disable interactive mode",
+				},
+				&cli.BoolFlag{
+					Name:    "no-step",
+					Aliases: []string{"ns"},
+					Usage:   "don't show step by step, just validate",
+				},
 				&cli.StringFlag{
 					Name:  "tagfile",
 					Usage: "optional json file map from hex values to human-readable tags",
@@ -308,6 +360,84 @@ func execute(cCtx *cli.Context) error {
 	executeErr := script.Execute(
 		keyMap, inputKeyBytes, txOutKeys, parsedScripts, scriptIndex,
 		parsedWitness, !nonInteractive, noStep, tags, skipAhead,
+	)
+	if executeErr != nil {
+		fmt.Printf("script exection failed: %s\r\n", executeErr)
+		return executeErr
+	}
+
+	fmt.Printf("script execution verified\r\n")
+	return nil
+}
+
+func validate(cCtx *cli.Context) error {
+
+	colWidth := cCtx.Int("colwidth")
+	if colWidth > 0 {
+		output.ColumnWidth = colWidth
+	}
+	maxRows := cCtx.Int("rows")
+	if maxRows > 0 {
+		output.MaxRows = maxRows
+	}
+
+	skipAhead := cCtx.Int("skip")
+
+	var parsedTxOuts []wire.TxOut
+	prevOutsStr := cCtx.String("prevouts")
+
+	for _, f := range strings.Split(prevOutsStr, ",") {
+		if f == "" {
+			continue
+		}
+
+		b, err := hex.DecodeString(strings.TrimSpace(f))
+		if err != nil {
+			return err
+		}
+		txOut := wire.TxOut{}
+		reader := bytes.NewReader(b)
+		err = wire.ReadTxOut(reader, 0, 0, &txOut)
+		if err != nil {
+			return err
+		}
+
+		parsedTxOuts = append(parsedTxOuts, txOut)
+	}
+
+	txStr := cCtx.String("tx")
+	b, err := hex.DecodeString(txStr)
+	if err != nil {
+		return err
+	}
+	reader := bytes.NewReader(b)
+	tx := wire.MsgTx{}
+	err = tx.Deserialize(reader)
+	if err != nil {
+		return err
+	}
+
+	nonInteractive := cCtx.Bool("non-interactive")
+	noStep := cCtx.Bool("no-step")
+
+	tagFile := cCtx.String("tagfile")
+	var tags map[string]string
+	if tagFile != "" {
+		tagBytes, err := file.Read(tagFile)
+		if err != nil {
+			return err
+		}
+
+		tags, err = file.ParseTagMap(tagBytes)
+		if err != nil {
+			return err
+		}
+	}
+
+	inputIdx := cCtx.Int("inputindex")
+
+	executeErr := script.Validate(&tx,
+		parsedTxOuts, inputIdx, !nonInteractive, noStep, tags, skipAhead,
 	)
 	if executeErr != nil {
 		fmt.Printf("script exection failed: %s\r\n", executeErr)
