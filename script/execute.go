@@ -28,7 +28,40 @@ const scriptFlags = txscript.StandardVerifyFlags
 // If [input/output]KeyBytes is empty, a random key will be generated.
 func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 	outputs []TxOutput, pkScripts [][]byte, scriptIndex int,
+	tx *wire.MsgTx, prevOuts []wire.TxOut, inputIdx int,
 	witnessGen []WitnessGen, interactive, noStep bool, tags map[string]string, skipAhead int) error {
+
+	generatedTx := false
+	if tx == nil {
+		tx = wire.NewMsgTx(2)
+		generatedTx = true
+
+		// add necessary amount of inputs
+		for i := 0; i <= inputIdx; i++ {
+			op := wire.OutPoint{
+				Index: 0,
+			}
+
+			tx.AddTxIn(&wire.TxIn{
+				PreviousOutPoint: op,
+			})
+		}
+
+		for i, o := range outputs {
+			fmt.Printf("output[%d] taproot key: %x:%d\n",
+				i, schnorr.SerializePubKey(o.OutputKey), o.Value)
+
+			outputScript, err := txscript.PayToTaprootScript(o.OutputKey)
+			if err != nil {
+				return err
+			}
+
+			tx.AddTxOut(&wire.TxOut{
+				Value:    o.Value,
+				PkScript: outputScript,
+			})
+		}
+	}
 
 	// Parse the input private keys.
 	privKeys := make(map[string]*btcec.PrivateKey)
@@ -75,73 +108,63 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 		outputs = append(outputs, TxOutput{outputKey, 1e8})
 	}
 
-	var tapLeaves []txscript.TapLeaf
+	var inputScript []byte
 	var tapLeaf txscript.TapLeaf
-	for i, pkScript := range pkScripts {
-		t := txscript.NewBaseTapLeaf(pkScript)
-		tapLeaves = append(tapLeaves, t)
+	var ctrlBlock txscript.ControlBlock
 
-		if i == scriptIndex {
-			tapLeaf = t
+	if generatedTx {
+		var tapLeaves []txscript.TapLeaf
+
+		for i, pkScript := range pkScripts {
+			t := txscript.NewBaseTapLeaf(pkScript)
+			tapLeaves = append(tapLeaves, t)
+
+			if i == scriptIndex {
+				tapLeaf = t
+			}
 		}
-	}
 
-	tapScriptTree := txscript.AssembleTaprootScriptTree(tapLeaves...)
+		tapScriptTree := txscript.AssembleTaprootScriptTree(tapLeaves...)
 
-	ctrlBlock := tapScriptTree.LeafMerkleProofs[scriptIndex].ToControlBlock(
-		inputKey,
-	)
+		ctrlBlock = tapScriptTree.LeafMerkleProofs[scriptIndex].ToControlBlock(
+			inputKey,
+		)
 
-	tapScriptRootHash := tapScriptTree.RootNode.TapHash()
+		tapScriptRootHash := tapScriptTree.RootNode.TapHash()
 
-	inputTapKey := txscript.ComputeTaprootOutputKey(
-		inputKey, tapScriptRootHash[:],
-	)
+		inputTapKey := txscript.ComputeTaprootOutputKey(
+			inputKey, tapScriptRootHash[:],
+		)
 
-	inputScript, err := txscript.PayToTaprootScript(inputTapKey)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("taptree: %x\n", tapScriptRootHash[:])
-	fmt.Printf("input internal key: %x\n", schnorr.SerializePubKey(inputKey))
-	fmt.Printf("input taproot key: %x\n", schnorr.SerializePubKey(inputTapKey))
-
-	prevOut := &wire.TxOut{
-		Value:    1e8,
-		PkScript: inputScript,
-	}
-
-	op := wire.OutPoint{
-		Index: 0,
-	}
-	prevOuts := map[wire.OutPoint]*wire.TxOut{
-		op: prevOut,
-	}
-
-	tx := wire.NewMsgTx(2)
-	tx.AddTxIn(&wire.TxIn{
-		PreviousOutPoint: op,
-	})
-
-	for i, o := range outputs {
-		fmt.Printf("output[%d] taproot key: %x:%d\n",
-			i, schnorr.SerializePubKey(o.OutputKey), o.Value)
-
-		outputScript, err := txscript.PayToTaprootScript(o.OutputKey)
+		var err error
+		inputScript, err = txscript.PayToTaprootScript(inputTapKey)
 		if err != nil {
 			return err
 		}
 
-		tx.AddTxOut(&wire.TxOut{
-			Value:    o.Value,
-			PkScript: outputScript,
-		})
+		fmt.Printf("taptree: %x\n", tapScriptRootHash[:])
+		fmt.Printf("input internal key: %x\n", schnorr.SerializePubKey(inputKey))
+		fmt.Printf("input taproot key: %x\n", schnorr.SerializePubKey(inputTapKey))
 	}
 
-	prevOutFetcher := txscript.NewCannedPrevOutputFetcher(
-		prevOut.PkScript, prevOut.Value,
-	)
+	prevOutsMap := make(map[wire.OutPoint]*wire.TxOut)
+	if prevOuts == nil {
+		for _, in := range tx.TxIn {
+			prev := &wire.TxOut{
+				Value:    1e8,
+				PkScript: inputScript,
+			}
+			prevOutsMap[in.PreviousOutPoint] = prev
+		}
+	} else {
+		for i := range prevOuts {
+			o := prevOuts[i]
+			outpoint := tx.TxIn[i].PreviousOutPoint
+			prevOutsMap[outpoint] = &o
+		}
+	}
+
+	prevOutFetcher := txscript.NewMultiPrevOutFetcher(prevOutsMap)
 
 	sigHashes := txscript.NewTxSigHashes(tx, prevOutFetcher)
 	signFunc := func(keyID string) ([]byte, error) {
@@ -149,8 +172,9 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 		if !ok {
 			return nil, fmt.Errorf("private key %s not known", keyID)
 		}
+		prevOut := prevOutsMap[tx.TxIn[inputIdx].PreviousOutPoint]
 		return txscript.RawTxInTapscriptSignature(
-			tx, sigHashes, 0, prevOut.Value, prevOut.PkScript, tapLeaf,
+			tx, sigHashes, inputIdx, prevOut.Value, prevOut.PkScript, tapLeaf,
 			txscript.SigHashDefault, privKey,
 		)
 	}
@@ -165,29 +189,32 @@ func Execute(privKeyBytes map[string][]byte, inputKeyBytes []byte,
 		combinedWitness = append(combinedWitness, w)
 	}
 
-	ctrlBlockBytes, err := ctrlBlock.ToBytes()
-	if err != nil {
-		return err
+	txCopy := tx.Copy()
+	if generatedTx {
+		ctrlBlockBytes, err := ctrlBlock.ToBytes()
+		if err != nil {
+			return err
+		}
+
+		combinedWitness = append(combinedWitness, pkScripts[scriptIndex], ctrlBlockBytes)
+		txCopy.TxIn[inputIdx].Witness = combinedWitness
 	}
 
-	combinedWitness = append(combinedWitness, pkScripts[scriptIndex], ctrlBlockBytes)
-
-	txCopy := tx.Copy()
-	txCopy.TxIn[0].Witness = combinedWitness
-
-	return ExecuteTx(txCopy, prevOut, prevOuts, interactive, noStep, tags, skipAhead)
+	return ExecuteTx(txCopy, prevOutsMap, inputIdx, interactive, noStep, tags, skipAhead)
 }
 
-func ExecuteTx(tx *wire.MsgTx, currentInput *wire.TxOut,
-	prevOuts map[wire.OutPoint]*wire.TxOut,
+func ExecuteTx(tx *wire.MsgTx,
+	prevOuts map[wire.OutPoint]*wire.TxOut, inputIdx int,
 	interactive, noStep bool, tags map[string]string, skipAhead int) error {
+
+	currentInput := prevOuts[tx.TxIn[inputIdx].PreviousOutPoint]
 
 	prevOutFetcher := txscript.NewMultiPrevOutFetcher(prevOuts)
 
 	setupFunc := func(cb func(*txscript.StepInfo) error) (*txscript.Engine, error) {
 		sigHashes := txscript.NewTxSigHashes(tx, prevOutFetcher)
 		return txscript.NewDebugEngine(
-			currentInput.PkScript, tx, 0, scriptFlags,
+			currentInput.PkScript, tx, inputIdx, scriptFlags,
 			nil, sigHashes, currentInput.Value, prevOutFetcher,
 			cb,
 		)
@@ -216,7 +243,7 @@ func ExecuteTx(tx *wire.MsgTx, currentInput *wire.TxOut,
 	// on a channel.
 	stepChan := make(chan error, 1)
 	tableChan, errChan := StepScript(
-		setupFunc, stepChan, tx.TxIn[0].Witness, tags, currentStep,
+		setupFunc, stepChan, tx.TxIn[inputIdx].Witness, tags, currentStep,
 	)
 
 	for {
@@ -300,7 +327,7 @@ func ExecuteTx(tx *wire.MsgTx, currentInput *wire.TxOut,
 					// current step.
 					tableChan, errChan = StepScript(
 						setupFunc, stepChan,
-						tx.TxIn[0].Witness, tags,
+						tx.TxIn[inputIdx].Witness, tags,
 						currentStep,
 					)
 				}

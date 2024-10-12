@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/btcsuite/btcd/wire"
 	"log"
 	"os"
 	"strconv"
@@ -60,6 +62,18 @@ func main() {
 				&cli.StringFlag{
 					Name:  "witness",
 					Usage: "filename or witness stack as string",
+				},
+				&cli.StringFlag{
+					Name:  "tx",
+					Usage: "serialized transaction in hex",
+				},
+				&cli.StringFlag{
+					Name:  "prevouts",
+					Usage: "list of prevouts as serialized txouts in hex",
+				},
+				&cli.IntFlag{
+					Name:  "inputindex",
+					Usage: "index of input from the \"tx\" to execute",
 				},
 				&cli.BoolFlag{
 					Name:    "non-interactive",
@@ -287,8 +301,12 @@ func execute(cCtx *cli.Context) error {
 	}
 
 	scriptIndex := cCtx.Int("scriptindex")
-	fmt.Printf("Script: %s\r\n", scriptStr[scriptIndex])
-	fmt.Printf("Witness: %s\r\n", witnessStr)
+	if scriptStr != nil {
+		fmt.Printf("Script: %s\r\n", scriptStr[scriptIndex])
+	}
+	if witnessStr != "" {
+		fmt.Printf("Witness: %s\r\n", witnessStr)
+	}
 
 	var parsedScripts [][]byte
 	for _, s := range scriptStr {
@@ -305,9 +323,47 @@ func execute(cCtx *cli.Context) error {
 		return err
 	}
 
+	// todo handle no prevouts
+	var parsedTxOuts []wire.TxOut
+	prevOutsStr := cCtx.String("prevouts")
+
+	for _, f := range strings.Split(prevOutsStr, ",") {
+		if f == "" {
+			continue
+		}
+
+		b, err := hex.DecodeString(strings.TrimSpace(f))
+		if err != nil {
+			return err
+		}
+		txOut := wire.TxOut{}
+		reader := bytes.NewReader(b)
+		err = wire.ReadTxOut(reader, 0, 0, &txOut)
+		if err != nil {
+			return err
+		}
+
+		parsedTxOuts = append(parsedTxOuts, txOut)
+	}
+
+	// todo handle no tx
+	txStr := cCtx.String("tx")
+	b, err := hex.DecodeString(txStr)
+	if err != nil {
+		return err
+	}
+	reader := bytes.NewReader(b)
+	tx := wire.MsgTx{}
+	err = tx.Deserialize(reader)
+	if err != nil {
+		return err
+	}
+
+	inputIdx := cCtx.Int("inputindex")
+
 	executeErr := script.Execute(
 		keyMap, inputKeyBytes, txOutKeys, parsedScripts, scriptIndex,
-		parsedWitness, !nonInteractive, noStep, tags, skipAhead,
+		&tx, parsedTxOuts, inputIdx, parsedWitness, !nonInteractive, noStep, tags, skipAhead,
 	)
 	if executeErr != nil {
 		fmt.Printf("script exection failed: %s\r\n", executeErr)
