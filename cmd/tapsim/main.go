@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -9,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/btcsuite/btcd/wire"
+
 	"github.com/halseth/tapsim/file"
 	"github.com/halseth/tapsim/output"
 	"github.com/halseth/tapsim/script"
@@ -56,7 +59,18 @@ func main() {
 					Name:  "scriptindex",
 					Usage: "index of script from \"scripts\" to execute",
 				},
-
+				&cli.StringFlag{
+					Name:  "tx",
+					Usage: "serialized transaction in hex",
+				},
+				&cli.StringFlag{
+					Name:  "prevouts",
+					Usage: "serialized prevouts comma seperated. Must be in same order as tx inputs",
+				},
+				&cli.IntFlag{
+					Name:  "inputindex",
+					Usage: "index of input from \"tx\" to execute",
+				},
 				&cli.StringFlag{
 					Name:  "witness",
 					Usage: "filename or witness stack as string",
@@ -206,16 +220,62 @@ func execute(cCtx *cli.Context) error {
 	noStep := cCtx.Bool("no-step")
 
 	inputKeyStr := cCtx.String("inputkey")
+	prevoutsStr := cCtx.String("prevouts")
+
+	if inputKeyStr != "" && prevoutsStr != "" {
+		return fmt.Errorf("cannot set both inputkey and prevouts")
+	}
+
+	inputKeyBytes, err := hex.DecodeString(inputKeyStr)
+	if err != nil {
+		return err
+	}
+
+	var prevOuts []*wire.TxOut
+	for _, p := range strings.Split(prevoutsStr, ",") {
+		if p == "" {
+			prevOuts = append(prevOuts, nil)
+			continue
+		}
+
+		b, err := hex.DecodeString(p)
+		if err != nil {
+			return err
+		}
+
+		txOut := wire.TxOut{}
+		reader := bytes.NewReader(b)
+		err = wire.ReadTxOut(reader, 0, 0, &txOut)
+		if err != nil {
+			return err
+		}
+
+		prevOuts = append(prevOuts, &txOut)
+	}
+
 	var scriptStr []string
 	scriptFile := cCtx.String("script")
 	scriptFiles := cCtx.String("scripts")
+	txStr := cCtx.String("tx")
 
-	if scriptFile != "" && scriptFiles != "" {
-		return fmt.Errorf("both script and scripts cannot be set")
+	nn := 0
+	if scriptFile != "" {
+		nn++
+	}
+	if scriptFiles != "" {
+		nn++
+	}
+	if txStr != "" {
+		nn++
+	}
+	if nn != 1 {
+		return fmt.Errorf("must set single one of script, scripts or tx")
 	}
 
 	scriptIndex := cCtx.Int("scriptindex")
+	inputIndex := cCtx.Int("inputindex")
 
+	var tx *wire.MsgTx
 	if scriptFile != "" {
 		// Attempt to read the script from file.
 		scriptBytes, err := file.Read(scriptFile)
@@ -231,7 +291,7 @@ func execute(cCtx *cli.Context) error {
 			// script directly.
 			scriptStr = []string{scriptFile}
 		}
-	} else {
+	} else if scriptFiles != "" {
 		for _, f := range strings.Split(scriptFiles, ",") {
 			if f == "" {
 				continue
@@ -248,6 +308,31 @@ func execute(cCtx *cli.Context) error {
 
 			scriptStr = append(scriptStr, s)
 		}
+	} else if txStr != "" {
+		b, err := hex.DecodeString(txStr)
+		if err != nil {
+			return err
+		}
+		reader := bytes.NewReader(b)
+		tx = &wire.MsgTx{}
+		err = tx.Deserialize(reader)
+		if err != nil {
+			return err
+		}
+
+		executeErr := script.ExecuteTx(
+			tx, prevOuts, inputIndex, !nonInteractive,
+			noStep, tags, skipAhead,
+		)
+		if executeErr != nil {
+			fmt.Printf("script exection failed: %s\r\n", executeErr)
+			return executeErr
+		}
+
+		fmt.Printf("tx execution verified\r\n")
+		return nil
+	} else {
+		return fmt.Errorf("must specify tx or script")
 	}
 
 	var witnessFile, witnessStr string
