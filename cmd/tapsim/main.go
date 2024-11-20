@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -9,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/btcsuite/btcd/wire"
+
 	"github.com/halseth/tapsim/file"
 	"github.com/halseth/tapsim/output"
 	"github.com/halseth/tapsim/script"
@@ -56,7 +59,18 @@ func main() {
 					Name:  "scriptindex",
 					Usage: "index of script from \"scripts\" to execute",
 				},
-
+				&cli.StringFlag{
+					Name:  "tx",
+					Usage: "serialized transaction in hex",
+				},
+				&cli.StringFlag{
+					Name:  "prevouts",
+					Usage: "serialized prevouts comma seperated. Must be in same order as tx inputs",
+				},
+				&cli.IntFlag{
+					Name:  "inputindex",
+					Usage: "index of input from \"tx\" to execute",
+				},
 				&cli.StringFlag{
 					Name:  "witness",
 					Usage: "filename or witness stack as string",
@@ -148,90 +162,6 @@ func execute(cCtx *cli.Context) error {
 
 	skipAhead := cCtx.Int("skip")
 
-	var scriptStr []string
-	scriptFile := cCtx.String("script")
-	scriptFiles := cCtx.String("scripts")
-
-	if scriptFile != "" && scriptFiles != "" {
-		return fmt.Errorf("both script and scripts cannot be set")
-	}
-
-	if scriptFile != "" {
-		// Attempt to read the script from file.
-		scriptBytes, err := file.Read(scriptFile)
-		if err == nil {
-			s, err := file.ParseScript(scriptBytes)
-			if err != nil {
-				return err
-			}
-
-			scriptStr = []string{s}
-		} else {
-			// If we failed reading the file, assume it's the
-			// script directly.
-			scriptStr = []string{scriptFile}
-		}
-	} else {
-		for _, f := range strings.Split(scriptFiles, ",") {
-			if f == "" {
-				continue
-			}
-
-			scriptBytes, err := file.Read(f)
-			if err != nil {
-				return err
-			}
-			s, err := file.ParseScript(scriptBytes)
-			if err != nil {
-				return err
-			}
-
-			scriptStr = append(scriptStr, s)
-		}
-	}
-
-	var witnessFile, witnessStr string
-	if cCtx.NArg() > 1 {
-		witnessFile = cCtx.Args().Get(1)
-	} else if cCtx.String("witness") != "" {
-		witnessFile = cCtx.String("witness")
-	}
-
-	// Attempt to read the witness from file.
-	witnessBytes, err := file.Read(witnessFile)
-	if err == nil {
-		witnessStr, err = file.ParseScript(witnessBytes)
-		if err != nil {
-			return err
-		}
-	} else {
-		// If we failed reading the file, assume it's the
-		// witness directly.
-		witnessStr = witnessFile
-	}
-
-	nonInteractive := cCtx.Bool("non-interactive")
-	noStep := cCtx.Bool("no-step")
-	privKeys := strings.Split(cCtx.String("privkeys"), ",")
-	keyMap := make(map[string][]byte)
-	for _, privKeyStr := range privKeys {
-		if privKeyStr == "" {
-			continue
-		}
-		k := strings.Split(privKeyStr, ":")
-		privKeyBytes, err := hex.DecodeString(k[1])
-		if err != nil {
-			return err
-		}
-
-		keyMap[k[0]] = privKeyBytes
-	}
-
-	inputKeyStr := cCtx.String("inputkey")
-	inputKeyBytes, err := hex.DecodeString(inputKeyStr)
-	if err != nil {
-		return err
-	}
 	outputKeyStr := cCtx.String("outputkey")
 	outputsStr := cCtx.String("outputs")
 
@@ -286,7 +216,160 @@ func execute(cCtx *cli.Context) error {
 		}
 	}
 
+	nonInteractive := cCtx.Bool("non-interactive")
+	noStep := cCtx.Bool("no-step")
+
+	inputKeyStr := cCtx.String("inputkey")
+	prevoutsStr := cCtx.String("prevouts")
+
+	if inputKeyStr != "" && prevoutsStr != "" {
+		return fmt.Errorf("cannot set both inputkey and prevouts")
+	}
+
+	inputKeyBytes, err := hex.DecodeString(inputKeyStr)
+	if err != nil {
+		return err
+	}
+
+	var prevOuts []*wire.TxOut
+	for _, p := range strings.Split(prevoutsStr, ",") {
+		if p == "" {
+			prevOuts = append(prevOuts, nil)
+			continue
+		}
+
+		b, err := hex.DecodeString(p)
+		if err != nil {
+			return err
+		}
+
+		txOut := wire.TxOut{}
+		reader := bytes.NewReader(b)
+		err = wire.ReadTxOut(reader, 0, 0, &txOut)
+		if err != nil {
+			return err
+		}
+
+		prevOuts = append(prevOuts, &txOut)
+	}
+
+	var scriptStr []string
+	scriptFile := cCtx.String("script")
+	scriptFiles := cCtx.String("scripts")
+	txStr := cCtx.String("tx")
+
+	nn := 0
+	if scriptFile != "" {
+		nn++
+	}
+	if scriptFiles != "" {
+		nn++
+	}
+	if txStr != "" {
+		nn++
+	}
+	if nn != 1 {
+		return fmt.Errorf("must set single one of script, scripts or tx")
+	}
+
 	scriptIndex := cCtx.Int("scriptindex")
+	inputIndex := cCtx.Int("inputindex")
+
+	var tx *wire.MsgTx
+	if scriptFile != "" {
+		// Attempt to read the script from file.
+		scriptBytes, err := file.Read(scriptFile)
+		if err == nil {
+			s, err := file.ParseScript(scriptBytes)
+			if err != nil {
+				return err
+			}
+
+			scriptStr = []string{s}
+		} else {
+			// If we failed reading the file, assume it's the
+			// script directly.
+			scriptStr = []string{scriptFile}
+		}
+	} else if scriptFiles != "" {
+		for _, f := range strings.Split(scriptFiles, ",") {
+			if f == "" {
+				continue
+			}
+
+			scriptBytes, err := file.Read(f)
+			if err != nil {
+				return err
+			}
+			s, err := file.ParseScript(scriptBytes)
+			if err != nil {
+				return err
+			}
+
+			scriptStr = append(scriptStr, s)
+		}
+	} else if txStr != "" {
+		b, err := hex.DecodeString(txStr)
+		if err != nil {
+			return err
+		}
+		reader := bytes.NewReader(b)
+		tx = &wire.MsgTx{}
+		err = tx.Deserialize(reader)
+		if err != nil {
+			return err
+		}
+
+		executeErr := script.ExecuteTx(
+			tx, prevOuts, inputIndex, !nonInteractive,
+			noStep, tags, skipAhead,
+		)
+		if executeErr != nil {
+			fmt.Printf("script exection failed: %s\r\n", executeErr)
+			return executeErr
+		}
+
+		fmt.Printf("tx execution verified\r\n")
+		return nil
+	} else {
+		return fmt.Errorf("must specify tx or script")
+	}
+
+	var witnessFile, witnessStr string
+	if cCtx.NArg() > 1 {
+		witnessFile = cCtx.Args().Get(1)
+	} else if cCtx.String("witness") != "" {
+		witnessFile = cCtx.String("witness")
+	}
+
+	// Attempt to read the witness from file.
+	witnessBytes, err := file.Read(witnessFile)
+	if err == nil {
+		witnessStr, err = file.ParseScript(witnessBytes)
+		if err != nil {
+			return err
+		}
+	} else {
+		// If we failed reading the file, assume it's the
+		// witness directly.
+		witnessStr = witnessFile
+	}
+
+	privKeys := strings.Split(cCtx.String("privkeys"), ",")
+	keyMap := make(map[string][]byte)
+	for _, privKeyStr := range privKeys {
+		if privKeyStr == "" {
+			continue
+		}
+		k := strings.Split(privKeyStr, ":")
+		privKeyBytes, err := hex.DecodeString(k[1])
+		if err != nil {
+			return err
+		}
+
+		keyMap[k[0]] = privKeyBytes
+	}
+
 	fmt.Printf("Script: %s\r\n", scriptStr[scriptIndex])
 	fmt.Printf("Witness: %s\r\n", witnessStr)
 
