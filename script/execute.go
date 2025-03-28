@@ -17,7 +17,7 @@ type TxOutput struct {
 	Value     int64
 }
 
-const scriptFlags = txscript.StandardVerifyFlags
+const scriptFlags = txscript.StandardVerifyFlags | txscript.ScriptVerifyOpCat
 
 // Execute builds a tap leaf using the passed pkScript and executes it step by
 // step with the provided witness.
